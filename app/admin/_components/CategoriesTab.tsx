@@ -70,10 +70,10 @@ export default function CategoriesTab() {
           <button
             key={r.id}
             onClick={() => setSelectedRole(r)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors duration-150 ${
               selectedRole.id === r.id
-                ? "bg-[#f97316] border-[#f97316] text-white"
-                : "bg-[#141414] border-[#2a2a2a] text-[#777] hover:text-white"
+                ? "bg-brand-orange border-brand-orange text-white"
+                : "bg-brand-black-soft border-brand-black-border text-brand-text-tertiary hover:text-white"
             }`}
           >
             {r.name}
@@ -92,7 +92,7 @@ export default function CategoriesTab() {
         <button
           type="submit"
           disabled={adding || !newName.trim()}
-          className="bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          className="btn-primary disabled:opacity-50 text-sm font-medium px-4 py-2"
         >
           Add
         </button>
@@ -101,7 +101,7 @@ export default function CategoriesTab() {
       {loading ? (
         <Spinner />
       ) : categories.length === 0 ? (
-        <p className="text-[#555] text-sm text-center py-8">
+        <p className="text-brand-text-muted text-sm text-center py-8">
           No specialisations yet for {selectedRole.name}. Add one above.
         </p>
       ) : (
@@ -109,7 +109,7 @@ export default function CategoriesTab() {
           {categories.map((cat) => (
             <div
               key={cat.id}
-              className="bg-[#141414] border border-[#2a2a2a] rounded-xl px-4 py-3 flex items-center gap-3"
+              className="card px-4 py-3 flex items-center gap-3"
             >
               {editingId === cat.id ? (
                 <>
@@ -123,36 +123,36 @@ export default function CategoriesTab() {
                     }}
                     className="flex-1 text-sm py-1 px-2"
                   />
-                  <button onClick={() => saveEdit(cat.id)} className="text-[#f97316] text-sm font-medium hover:text-white">
+                  <button onClick={() => saveEdit(cat.id)} className="text-brand-orange text-sm font-medium hover:text-white transition-colors duration-150">
                     Save
                   </button>
-                  <button onClick={() => setEditingId(null)} className="text-[#555] text-sm hover:text-white">
+                  <button onClick={() => setEditingId(null)} className="text-brand-text-muted text-sm hover:text-white transition-colors duration-150">
                     Cancel
                   </button>
                 </>
               ) : (
                 <>
-                  <span className={`flex-1 text-sm font-medium ${cat.active ? "text-white" : "text-[#555] line-through"}`}>
+                  <span className={`flex-1 text-sm font-medium ${cat.active ? "text-white" : "text-brand-text-muted line-through"}`}>
                     {cat.name}
                   </span>
-                  <span className="text-[#555] text-xs">{cat.slug}</span>
+                  <span className="text-brand-text-muted text-xs">{cat.slug}</span>
                   <button
                     onClick={() => { setEditingId(cat.id); setEditName(cat.name); }}
-                    className="text-[#555] hover:text-[#f97316] text-xs transition-colors"
+                    className="text-brand-text-muted hover:text-brand-orange text-xs transition-colors duration-150"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => toggleActive(cat)}
-                    className={`text-xs font-medium transition-colors ${
-                      cat.active ? "text-green-400 hover:text-[#555]" : "text-[#555] hover:text-green-400"
+                    className={`text-xs font-medium transition-colors duration-150 ${
+                      cat.active ? "text-green-400 hover:text-brand-text-muted" : "text-brand-text-muted hover:text-green-400"
                     }`}
                   >
                     {cat.active ? "Active" : "Inactive"}
                   </button>
                   <button
                     onClick={() => deleteCategory(cat.id)}
-                    className="text-[#555] hover:text-red-400 text-xs transition-colors"
+                    className="text-brand-text-muted hover:text-red-400 text-xs transition-colors duration-150"
                   >
                     Delete
                   </button>

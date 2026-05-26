@@ -48,7 +48,7 @@ export default function AdminPage() {
   if (authed === null) {
     return (
       <div className="flex items-center justify-center min-h-[80vh]">
-        <div className="w-4 h-4 border-2 border-[#f97316] border-t-transparent rounded-full animate-spin" />
+        <div className="w-4 h-4 border-2 border-brand-orange border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -73,7 +73,7 @@ export default function AdminPage() {
           <button
             type="submit"
             disabled={logging}
-            className="w-full bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors"
+            className="btn-primary w-full disabled:opacity-60 font-bold py-3"
           >
             {logging ? "Logging in..." : "Login"}
           </button>
@@ -88,19 +88,19 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold text-white">RapidTal Admin</h1>
         <button
           onClick={logout}
-          className="text-[#555] hover:text-red-400 text-sm px-4 py-2 rounded-lg transition-colors"
+          className="text-brand-text-muted hover:text-red-400 text-sm px-4 py-2 rounded-lg transition-colors duration-150"
         >
           Logout
         </button>
       </div>
 
-      <div className="flex gap-1 mb-8 bg-[#141414] border border-[#2a2a2a] rounded-xl p-1 w-fit flex-wrap">
+      <div className="flex gap-1 mb-8 card p-1 w-fit flex-wrap">
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-              tab === t ? "bg-[#f97316] text-white" : "text-[#777] hover:text-white"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 capitalize ${
+              tab === t ? "bg-brand-orange text-white" : "text-brand-text-tertiary hover:text-white"
             }`}
           >
             {t}

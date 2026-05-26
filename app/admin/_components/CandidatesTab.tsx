@@ -89,17 +89,17 @@ export default function CandidatesTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <p className="text-[#555] text-sm">{count} candidates</p>
+        <p className="text-brand-text-muted text-sm tabular-nums">{count} candidates</p>
         <div className="flex gap-2">
           <button
             onClick={() => setViewMode((v) => (v === "list" ? "kanban" : "list"))}
-            className="bg-[#1c1c1c] hover:bg-[#2a2a2a] border border-[#2a2a2a] text-[#a1a1aa] text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+            className="btn-ghost text-sm px-3 py-2"
           >
             {viewMode === "list" ? "⊞ Kanban" : "≡ List"}
           </button>
           <button
             onClick={exportCSV}
-            className="bg-[#1c1c1c] hover:bg-[#2a2a2a] border border-[#2a2a2a] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="card-inner hover:border-brand-orange text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors duration-150"
           >
             Export CSV
           </button>
@@ -135,7 +135,7 @@ export default function CandidatesTab() {
 
         <button
           onClick={() => fetchCandidates(0)}
-          className="bg-[#1c1c1c] border border-[#2a2a2a] text-[#a1a1aa] text-sm px-4 py-2 rounded-lg hover:border-[#f97316] transition-colors"
+          className="card-inner hover:border-brand-orange text-brand-text-secondary text-sm px-4 py-2 rounded-xl transition-colors duration-150"
         >
           Refresh
         </button>
@@ -159,17 +159,17 @@ export default function CandidatesTab() {
               <button
                 onClick={() => fetchCandidates(page - 1)}
                 disabled={page === 0}
-                className="bg-[#1c1c1c] border border-[#2a2a2a] text-[#a1a1aa] text-sm px-3 py-1.5 rounded-lg disabled:opacity-40 hover:border-[#f97316] transition-colors"
+                className="card-inner hover:border-brand-orange text-brand-text-secondary text-sm px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors duration-150"
               >
                 ← Prev
               </button>
-              <span className="text-[#555] text-sm">
+              <span className="text-brand-text-muted text-sm tabular-nums">
                 {page + 1} / {totalPages} ({count} total)
               </span>
               <button
                 onClick={() => fetchCandidates(page + 1)}
                 disabled={page >= totalPages - 1}
-                className="bg-[#1c1c1c] border border-[#2a2a2a] text-[#a1a1aa] text-sm px-3 py-1.5 rounded-lg disabled:opacity-40 hover:border-[#f97316] transition-colors"
+                className="card-inner hover:border-brand-orange text-brand-text-secondary text-sm px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors duration-150"
               >
                 Next →
               </button>

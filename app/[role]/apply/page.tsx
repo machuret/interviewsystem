@@ -43,7 +43,6 @@ export default function ApplyPage() {
 
   const roleName = ROLE_NAMES[params.role] ?? params.role;
 
-  // Run internet speed test when entering step 2
   useEffect(() => {
     if (step !== 2 || speedDoneRef.current) return;
     speedDoneRef.current = true;
@@ -77,28 +76,20 @@ export default function ApplyPage() {
     try {
       let res: Response;
       if (!applicantId) {
-        // Create new applicant record
         res = await fetch("/api/applicants", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ role_slug: params.role, ...form }),
         });
       } else {
-        // Update existing record
         res = await fetch(`/api/applicants/${applicantId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form),
         });
       }
-
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Failed to save. Please try again.");
-        setSaving(false);
-        return false;
-      }
-
+      if (!res.ok) { setError(data.error || "Failed to save. Please try again."); setSaving(false); return false; }
       if (!applicantId && data.id) setApplicantId(data.id);
       setSaving(false);
       return true;
@@ -110,58 +101,42 @@ export default function ApplyPage() {
   }
 
   async function handleNext() {
-    // Validate required fields per step
     if (step === 1) {
       if (!form.first_name.trim()) { setError("First name is required."); return; }
       if (!form.email.trim())      { setError("Email is required."); return; }
       if (!form.phone.trim())      { setError("Phone is required."); return; }
       if (!form.location.trim())   { setError("Location is required."); return; }
     }
-
     const ok = await saveStep();
     if (!ok) return;
-
     if (step < 3) {
       setStep(step + 1);
     } else {
-      // All steps done — go to typing test, then quiz
-      const aid = applicantId;
-      router.push(`/${params.role}/typing-test${aid ? `?aid=${aid}` : ""}`);
+      router.push(`/${params.role}/typing-test${applicantId ? `?aid=${applicantId}` : ""}`);
     }
   }
 
-  function handleBack() {
-    setError("");
-    setStep(step - 1);
-  }
+  function handleBack() { setError(""); setStep(step - 1); }
 
-  // ── Progress indicator ───────────────────────────────────────────────────
   const STEPS = ["Basic Info", "Your Setup", "Work Experience"];
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
 
-      {/* Header */}
       <div className="text-center mb-8">
-        <p className="text-[#f97316] text-xs font-semibold uppercase tracking-widest mb-1">{roleName}</p>
-        <h1 className="text-2xl font-bold text-white mb-1">Tell us about yourself</h1>
-        <p className="text-[#555] text-sm">Step {step} of 3 — {STEPS[step - 1]}</p>
+        <p className="section-label mb-1">{roleName}</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Tell us about yourself</h1>
+        <p className="text-brand-text-muted text-sm">Step {step} of 3 — {STEPS[step - 1]}</p>
       </div>
 
-      {/* Progress bar */}
       <div className="flex gap-1.5 mb-8">
         {STEPS.map((_, i) => (
-          <div key={i} className={`flex-1 h-1 rounded-full transition-colors ${i < step ? "bg-[#f97316]" : "bg-[#2a2a2a]"}`} />
+          <div key={i} className={`flex-1 h-1 rounded-full transition-colors duration-150 ${i < step ? "bg-brand-orange" : "bg-brand-black-border"}`} />
         ))}
       </div>
 
-      {error && (
-        <div className="bg-red-900/30 border border-red-700/50 text-red-400 rounded-xl px-4 py-3 mb-5 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <div className="error-box mb-5">{error}</div>}
 
-      {/* ── Step 1: Basic Info ──────────────────────────────────── */}
       {step === 1 && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -172,11 +147,9 @@ export default function ApplyPage() {
               <input type="text" placeholder="Santos" value={form.last_name} onChange={(e) => update("last_name", e.target.value)} />
             </F>
           </div>
-
           <F label="Email Address" required>
             <input required type="email" placeholder="maria@example.com" value={form.email} onChange={(e) => update("email", e.target.value)} />
           </F>
-
           <div className="grid grid-cols-2 gap-4">
             <F label="Facebook">
               <input type="url" placeholder="facebook.com/..." value={form.facebook_link} onChange={(e) => update("facebook_link", e.target.value)} />
@@ -185,11 +158,9 @@ export default function ApplyPage() {
               <input type="url" placeholder="instagram.com/..." value={form.instagram_link} onChange={(e) => update("instagram_link", e.target.value)} />
             </F>
           </div>
-
           <F label="Phone / WhatsApp" required>
             <input required type="tel" placeholder="+63 912 345 6789" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
           </F>
-
           <div className="grid grid-cols-2 gap-4">
             <F label="Age">
               <input type="number" min={18} max={70} placeholder="27" value={form.age} onChange={(e) => update("age", e.target.value)} />
@@ -198,7 +169,6 @@ export default function ApplyPage() {
               <input required type="text" placeholder="Makati, Metro Manila" value={form.location} onChange={(e) => update("location", e.target.value)} />
             </F>
           </div>
-
           <div className="grid grid-cols-3 gap-4">
             <F label="Sex">
               <select value={form.sex} onChange={(e) => update("sex", e.target.value)}>
@@ -225,7 +195,6 @@ export default function ApplyPage() {
         </div>
       )}
 
-      {/* ── Step 2: Your Setup ──────────────────────────────────── */}
       {step === 2 && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -240,25 +209,23 @@ export default function ApplyPage() {
               <input type="text" placeholder="Dell, ASUS, Apple..." value={form.device_brand} onChange={(e) => update("device_brand", e.target.value)} />
             </F>
           </div>
-
           <F label="Internet Provider">
             <input type="text" placeholder="PLDT, Globe, Converge..." value={form.internet_provider} onChange={(e) => update("internet_provider", e.target.value)} />
           </F>
-
-          <div className="bg-[#1c1c1c] border border-[#2a2a2a] rounded-xl p-4 text-sm mt-2">
-            <p className="text-[#777] mb-2">We work with Australian businesses, so a stable internet connection is important for remote roles.</p>
+          <div className="card-inner p-4 text-sm mt-2">
+            <p className="text-brand-text-tertiary mb-2">We work with Australian businesses, so a stable internet connection is important for remote roles.</p>
             {speedTesting && (
-              <div className="flex items-center gap-2 text-[#a1a1aa]">
-                <div className="w-3 h-3 border border-[#f97316] border-t-transparent rounded-full animate-spin" />
+              <div className="flex items-center gap-2 text-brand-text-secondary">
+                <div className="w-3 h-3 border border-brand-orange border-t-transparent rounded-full animate-spin" />
                 Testing your connection speed...
               </div>
             )}
             {!speedTesting && internetMbps !== null && (
               <div className="flex items-center gap-2">
-                <span className={`font-bold ${internetMbps >= 10 ? "text-green-400" : internetMbps >= 5 ? "text-yellow-400" : "text-red-400"}`}>
+                <span className={`font-bold tabular-nums ${internetMbps >= 10 ? "text-green-400" : internetMbps >= 5 ? "text-yellow-400" : "text-red-400"}`}>
                   {internetMbps} Mbps
                 </span>
-                <span className="text-[#555]">download speed detected</span>
+                <span className="text-brand-text-muted">download speed detected</span>
                 {internetMbps < 5 && <span className="text-red-400 text-xs">(may affect remote work)</span>}
               </div>
             )}
@@ -266,7 +233,6 @@ export default function ApplyPage() {
         </div>
       )}
 
-      {/* ── Step 3: Work Experience ─────────────────────────────── */}
       {step === 3 && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -284,45 +250,33 @@ export default function ApplyPage() {
               </select>
             </F>
           </div>
-
           <F label="Previous Employers / Clients">
             <textarea rows={2} className="resize-none" placeholder="List companies or clients you've worked for..." value={form.previous_employers} onChange={(e) => update("previous_employers", e.target.value)} />
           </F>
-
           <F label="Skills & Tools">
             <textarea rows={2} className="resize-none" placeholder="Google Workspace, Canva, HubSpot, Trello..." value={form.skills_tools} onChange={(e) => update("skills_tools", e.target.value)} />
           </F>
-
           <F label="Software You Use">
             <textarea rows={2} className="resize-none" placeholder="Slack, Zoom, Notion, Asana, QuickBooks..." value={form.software_used} onChange={(e) => update("software_used", e.target.value)} />
           </F>
-
           <F label="Describe Your Day-to-Day Tasks">
             <textarea rows={3} className="resize-none" placeholder="What do you typically do in your current or most recent role?" value={form.task_description} onChange={(e) => update("task_description", e.target.value)} />
           </F>
         </div>
       )}
 
-      {/* Navigation */}
       <div className="flex gap-3 mt-8">
         {step > 1 && (
-          <button
-            onClick={handleBack}
-            className="flex-1 bg-[#1c1c1c] border border-[#2a2a2a] text-[#a1a1aa] hover:text-white font-medium py-3 rounded-xl transition-colors"
-          >
+          <button onClick={handleBack} className="flex-1 btn-ghost py-3">
             ← Back
           </button>
         )}
-        <button
-          onClick={handleNext}
-          disabled={saving}
-          className="flex-1 bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors"
-        >
-          {saving ? "Saving..." : step === 3 ? "Save & Continue →" : "Save & Continue →"}
+        <button onClick={handleNext} disabled={saving} className="flex-1 btn-primary py-3">
+          {saving ? "Saving..." : "Save & Continue →"}
         </button>
       </div>
 
-      <p className="text-center text-[#555] text-xs mt-4">
+      <p className="text-center text-brand-text-muted text-xs mt-4">
         Your info is saved automatically as you progress.
       </p>
     </div>
@@ -332,8 +286,8 @@ export default function ApplyPage() {
 function F({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[#a1a1aa] text-sm mb-1">
-        {label}{required && <span className="text-[#f97316] ml-0.5">*</span>}
+      <label>
+        {label}{required && <span className="text-brand-orange ml-0.5">*</span>}
       </label>
       {children}
     </div>

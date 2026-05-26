@@ -23,10 +23,10 @@ function CandidateRow({ c, expanded, onToggle, updatingId, updateStatus, notesCa
   const cachedNotes = notesCache[c.id];
 
   return (
-    <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl overflow-hidden">
+    <div className="card overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full text-left px-5 py-4 flex flex-wrap items-center gap-x-6 gap-y-2 hover:bg-[#1c1c1c] transition-colors"
+        className="w-full text-left px-5 py-4 flex flex-wrap items-center gap-x-6 gap-y-2 hover:bg-brand-black-card transition-colors duration-150"
       >
         <div className="flex-1 min-w-[180px]">
           <div className="flex items-center gap-2">
@@ -40,18 +40,18 @@ function CandidateRow({ c, expanded, onToggle, updatingId, updateStatus, notesCa
               </span>
             )}
           </div>
-          <p className="text-[#555] text-xs">{c.email}</p>
+          <p className="text-brand-text-muted text-xs">{c.email}</p>
         </div>
-        <div className="text-[#a1a1aa] text-sm min-w-[140px]">
+        <div className="text-brand-text-secondary text-sm min-w-[140px]">
           {c.apply_quiz_sessions?.apply_roles?.name ?? "—"}
         </div>
-        <div className="text-[#f97316] font-bold text-sm min-w-[60px]">
+        <div className="text-brand-orange font-bold text-sm min-w-[60px] tabular-nums">
           {c.apply_quiz_sessions?.score ?? "—"}/10
         </div>
-        <div className="text-[#a1a1aa] text-sm min-w-[100px]">
+        <div className="text-brand-text-secondary text-sm min-w-[100px] tabular-nums">
           ₱{Number(c.salary_expectation_php).toLocaleString()}
         </div>
-        <div className="text-[#777] text-xs min-w-[100px]">
+        <div className="text-brand-text-tertiary text-xs min-w-[100px]">
           {new Date(c.submitted_at).toLocaleDateString("en-AU")}
         </div>
         <div>
@@ -59,7 +59,7 @@ function CandidateRow({ c, expanded, onToggle, updatingId, updateStatus, notesCa
             {c.status}
           </span>
         </div>
-        <div className="text-[#555] text-xs ml-auto">{expanded ? "▲" : "▼"}</div>
+        <div className="text-brand-text-muted text-xs ml-auto">{expanded ? "▲" : "▼"}</div>
       </button>
 
       {expanded && (

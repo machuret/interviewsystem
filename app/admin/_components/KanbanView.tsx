@@ -16,7 +16,6 @@ export default function KanbanView({ candidates, updateStatus }: Props) {
     dragItem.current = { id, status };
   }
 
-  // Direct DOM manipulation — zero React re-renders during drag (no setState)
   function onDragOver(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     e.currentTarget.style.borderColor     = "#f97316";
@@ -47,7 +46,7 @@ export default function KanbanView({ candidates, updateStatus }: Props) {
         return (
           <div
             key={status}
-            className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-xl p-3 transition-colors"
+            className="card rounded-xl p-3 transition-colors"
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={(e) => onDrop(e, status)}
@@ -56,7 +55,7 @@ export default function KanbanView({ candidates, updateStatus }: Props) {
               <p className={`text-xs font-semibold uppercase tracking-widest capitalize ${textColorClass}`}>
                 {status}
               </p>
-              <span className="text-[#555] text-xs bg-[#1c1c1c] px-2 py-0.5 rounded-full">
+              <span className="text-brand-text-muted text-xs bg-brand-black-card px-2 py-0.5 rounded-full tabular-nums">
                 {cols.length}
               </span>
             </div>
@@ -71,7 +70,7 @@ export default function KanbanView({ candidates, updateStatus }: Props) {
                     key={c.id}
                     draggable
                     onDragStart={() => onDragStart(c.id, c.status)}
-                    className="bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2.5 cursor-grab active:cursor-grabbing hover:border-[#3a3a3a] transition-colors"
+                    className="card-inner rounded-lg px-3 py-2.5 cursor-grab active:cursor-grabbing hover:border-brand-black-border transition-colors duration-150"
                   >
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <p className="text-white text-xs font-medium truncate flex-1">{c.full_name}</p>
@@ -79,14 +78,14 @@ export default function KanbanView({ candidates, updateStatus }: Props) {
                         <span className="text-yellow-400 text-xs shrink-0" title="Suspicious activity">⚠</span>
                       )}
                     </div>
-                    <p className="text-[#555] text-xs truncate">
+                    <p className="text-brand-text-muted text-xs truncate">
                       {c.apply_quiz_sessions?.apply_roles?.name ?? "—"}
                     </p>
                     <div className="flex items-center justify-between mt-2">
-                      <span className="text-[#f97316] text-xs font-bold">
+                      <span className="text-brand-orange text-xs font-bold tabular-nums">
                         {c.apply_quiz_sessions?.score ?? "—"}/10
                       </span>
-                      <span className="text-[#555] text-xs">
+                      <span className="text-brand-text-muted text-xs">
                         {new Date(c.submitted_at).toLocaleDateString("en-AU", {
                           day: "numeric",
                           month: "short",
@@ -97,7 +96,7 @@ export default function KanbanView({ candidates, updateStatus }: Props) {
                 );
               })}
               {cols.length === 0 && (
-                <p className="text-[#555] text-xs text-center py-6">Drop here</p>
+                <p className="text-brand-text-muted text-xs text-center py-6">Drop here</p>
               )}
             </div>
           </div>

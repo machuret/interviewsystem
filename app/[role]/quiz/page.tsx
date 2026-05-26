@@ -35,7 +35,6 @@ function QuizInner() {
   const submittingRef    = useRef(false);
   const questionStartRef = useRef<number>(0);
 
-  // ── Fetch questions from server ──────────────────────────────────────────
   const startQuiz = useCallback(
     async (category: Category | null) => {
       setState("loading");
@@ -43,7 +42,6 @@ function QuizInner() {
         const body: Record<string, string> = { role_slug: params.role };
         if (category)    body.category_slug = category.slug;
         if (applicantId) body.applicant_id  = applicantId;
-
         const res = await fetch("/api/quiz/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -68,41 +66,29 @@ function QuizInner() {
     [params.role, applicantId]
   );
 
-  // ── Load categories, then either show picker or pre-load questions ────────
   useEffect(() => {
     async function init() {
       try {
         const res = await fetch(`/api/quiz/categories?role=${params.role}`);
-        if (!res.ok) {
-          // No categories table yet — fall straight through
-          startQuiz(null);
-          return;
-        }
+        if (!res.ok) { startQuiz(null); return; }
         const data = await res.json();
         const cats: Category[] = data.categories ?? [];
         setCategories(cats);
-        if (cats.length > 0) {
-          setState("pick-category");
-        } else {
-          // No specialisations set up — fetch questions now
-          startQuiz(null);
-        }
+        if (cats.length > 0) setState("pick-category");
+        else startQuiz(null);
       } catch {
-        // Category fetch failed — try to start quiz anyway
         startQuiz(null);
       }
     }
     init();
   }, [params.role, startQuiz]);
 
-  // ── Submit answers ───────────────────────────────────────────────────────
   const submitQuiz = useCallback(
     async (finalAnswers: number[], finalTimes: number[], forceFail = false) => {
       if (submittingRef.current) return;
       submittingRef.current = true;
       if (timerRef.current) clearInterval(timerRef.current);
       setState("submitting");
-
       try {
         const res = await fetch("/api/quiz/submit", {
           method: "POST",
@@ -117,11 +103,8 @@ function QuizInner() {
         });
         const data = await res.json();
         const passUrl = `/${params.role}/pass?sid=${sessionId}${applicantId ? `&aid=${applicantId}` : ""}`;
-        if (data.passed) {
-          router.push(passUrl);
-        } else {
-          router.push(`/${params.role}/fail`);
-        }
+        if (data.passed) router.push(passUrl);
+        else router.push(`/${params.role}/fail`);
       } catch {
         router.push(`/${params.role}/fail`);
       }
@@ -129,7 +112,6 @@ function QuizInner() {
     [sessionId, params.role, applicantId, router]
   );
 
-  // ── Per-question timer ───────────────────────────────────────────────────
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     setTimeLeft(TIMER_SECONDS);
@@ -145,12 +127,8 @@ function QuizInner() {
               const next = [...prev, -1];
               setCurrent((c) => {
                 const nextIdx = c + 1;
-                if (nextIdx >= questions.length) {
-                  submitQuiz(next, nextTimes);
-                } else {
-                  setSelected(null);
-                  setTimeout(startTimer, 50);
-                }
+                if (nextIdx >= questions.length) submitQuiz(next, nextTimes);
+                else { setSelected(null); setTimeout(startTimer, 50); }
                 return nextIdx;
               });
               return next;
@@ -164,7 +142,6 @@ function QuizInner() {
     }, 1000);
   }, [questions.length, submitQuiz]);
 
-  // ── Tab-switch detection ─────────────────────────────────────────────────
   useEffect(() => {
     if (state !== "question") return;
     const handle = () => {
@@ -178,7 +155,6 @@ function QuizInner() {
     return () => document.removeEventListener("visibilitychange", handle);
   }, [state, answers, answerTimes, submitQuiz]);
 
-  // ── Disable browser back ─────────────────────────────────────────────────
   useEffect(() => {
     if (state !== "question") return;
     const block = () => history.pushState(null, "", window.location.href);
@@ -187,66 +163,55 @@ function QuizInner() {
     return () => window.removeEventListener("popstate", block);
   }, [state]);
 
-  function beginQuiz() {
-    setState("question");
-    startTimer();
-  }
+  function beginQuiz() { setState("question"); startTimer(); }
 
   function handleSelect(idx: number) {
     if (selected !== null) return;
     if (timerRef.current) clearInterval(timerRef.current);
-    const elapsed = (Date.now() - questionStartRef.current) / 1000;
+    const elapsed  = (Date.now() - questionStartRef.current) / 1000;
     setSelected(idx);
-
     const newAnswers = [...answers, idx];
     const newTimes   = [...answerTimes, elapsed];
     setAnswers(newAnswers);
     setAnswerTimes(newTimes);
-
     setTimeout(() => {
       const nextIdx = current + 1;
-      if (nextIdx >= questions.length) {
-        submitQuiz(newAnswers, newTimes);
-      } else {
-        setCurrent(nextIdx);
-        setSelected(null);
-        startTimer();
-      }
+      if (nextIdx >= questions.length) submitQuiz(newAnswers, newTimes);
+      else { setCurrent(nextIdx); setSelected(null); startTimer(); }
     }, 600);
   }
 
   function blockAction(e: React.SyntheticEvent) { e.preventDefault(); }
 
   const timerPct   = (timeLeft / TIMER_SECONDS) * 100;
-  const timerColor = timeLeft <= 10 ? "bg-red-500" : "bg-[#f97316]";
+  const timerColor = timeLeft <= 10 ? "bg-red-500" : "bg-brand-orange";
 
-  // ── Renders ──────────────────────────────────────────────────────────────
   if (state === "loading") return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-      <div className="w-8 h-8 border-2 border-[#f97316] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-      <p className="text-[#777]">Loading...</p>
+      <div className="w-8 h-8 border-2 border-brand-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+      <p className="text-brand-text-tertiary">Loading...</p>
     </div>
   );
 
   if (state === "error") return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
       <p className="text-red-400 mb-4">{error}</p>
-      <a href="/" className="text-[#f97316] underline">← Back to roles</a>
+      <a href="/" className="text-brand-orange underline">← Back to roles</a>
     </div>
   );
 
   if (state === "submitting") return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-      <div className="w-8 h-8 border-2 border-[#f97316] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-      <p className="text-[#777]">Submitting your answers...</p>
+      <div className="w-8 h-8 border-2 border-brand-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+      <p className="text-brand-text-tertiary">Submitting your answers...</p>
     </div>
   );
 
   if (state === "pick-category") return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-      <p className="text-[#f97316] text-sm font-semibold uppercase tracking-widest mb-2">Choose your specialisation</p>
-      <h1 className="text-3xl font-bold text-white mb-3">What is your focus area?</h1>
-      <p className="text-[#a1a1aa] mb-8 text-sm">
+      <p className="section-label mb-2">Choose your specialisation</p>
+      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">What is your focus area?</h1>
+      <p className="text-brand-text-secondary mb-8 text-sm">
         Your quiz will include 5 core questions + 5 questions specific to your specialisation.
       </p>
       <div className="grid gap-3 text-left">
@@ -254,9 +219,9 @@ function QuizInner() {
           <button
             key={cat.id}
             onClick={() => { setSelectedCategory(cat); startQuiz(cat); }}
-            className="w-full text-left bg-[#141414] border border-[#2a2a2a] hover:border-[#f97316] hover:bg-[#1c1c1c] rounded-xl px-6 py-4 text-white font-medium transition-all duration-150"
+            className="w-full text-left card hover:border-brand-orange hover:bg-brand-black-card px-6 py-4 text-white font-medium transition-all duration-150"
           >
-            <span className="text-[#f97316] font-bold mr-3">→</span>{cat.name}
+            <span className="text-brand-orange font-bold mr-3">→</span>{cat.name}
           </button>
         ))}
       </div>
@@ -265,13 +230,13 @@ function QuizInner() {
 
   if (state === "ready") return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-      <p className="text-[#f97316] text-sm font-semibold uppercase tracking-widest mb-2">
+      <p className="section-label mb-2">
         {roleName}{selectedCategory ? ` · ${selectedCategory.name}` : ""}
       </p>
-      <h1 className="text-3xl font-bold text-white mb-4">Ready to start?</h1>
-      <p className="text-[#a1a1aa] mb-2">10 questions · 45 seconds each · no going back</p>
-      <p className="text-[#a1a1aa] mb-8 text-sm">Switching tabs will immediately end your attempt.</p>
-      <button onClick={beginQuiz} className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold px-10 py-4 rounded-xl text-lg transition-colors">
+      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4">Ready to start?</h1>
+      <p className="text-brand-text-secondary mb-2">10 questions · 45 seconds each · no going back</p>
+      <p className="text-brand-text-secondary mb-8 text-sm">Switching tabs will immediately end your attempt.</p>
+      <button onClick={beginQuiz} className="btn-primary px-10 py-4 text-lg">
         Start Quiz
       </button>
     </div>
@@ -283,29 +248,29 @@ function QuizInner() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 select-none" onContextMenu={blockAction} onCopy={blockAction} onCut={blockAction} onPaste={blockAction}>
       <div className="flex items-center justify-between mb-4">
-        <span className="text-[#555] text-sm">Question {current + 1} of {questions.length}</span>
-        <span className={`text-sm font-bold tabular-nums ${timeLeft <= 10 ? "text-red-400" : "text-[#f97316]"}`}>{timeLeft}s</span>
+        <span className="text-brand-text-muted text-sm">Question {current + 1} of {questions.length}</span>
+        <span className={`text-sm font-bold tabular-nums ${timeLeft <= 10 ? "text-red-400" : "text-brand-orange"}`}>{timeLeft}s</span>
       </div>
 
-      <div className="h-1 w-full bg-[#2a2a2a] rounded-full mb-8 overflow-hidden">
+      <div className="h-1 w-full bg-brand-black-border rounded-full mb-8 overflow-hidden">
         <div className={`h-1 rounded-full transition-all duration-1000 ${timerColor}`} style={{ width: `${timerPct}%` }} />
       </div>
 
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-6">
+      <div className="card p-6 mb-6">
         <p className="text-white text-lg font-medium leading-relaxed">{q.question_text}</p>
       </div>
 
       <div className="grid gap-3">
         {q.options.map((option, idx) => {
-          let style = "w-full text-left bg-[#141414] border border-[#2a2a2a] rounded-xl px-5 py-4 text-[#e5e5e5] text-sm font-medium transition-all duration-150 cursor-pointer";
+          let style = "w-full text-left card px-5 py-4 text-brand-text-body text-sm font-medium transition-colors duration-150 cursor-pointer";
           if (selected !== null) {
-            style += idx === selected ? " border-[#f97316] bg-[#1c1c1c] text-white" : " opacity-40 cursor-not-allowed";
+            style += idx === selected ? " border-brand-orange bg-brand-black-card text-white" : " opacity-40 cursor-not-allowed";
           } else {
-            style += " hover:border-[#f97316] hover:bg-[#1c1c1c] hover:text-white";
+            style += " hover:border-brand-orange hover:bg-brand-black-card hover:text-white";
           }
           return (
             <button key={idx} className={style} onClick={() => handleSelect(idx)} disabled={selected !== null}>
-              <span className="text-[#f97316] font-bold mr-3">{String.fromCharCode(65 + idx)}.</span>
+              <span className="text-brand-orange font-bold mr-3">{String.fromCharCode(65 + idx)}.</span>
               {option}
             </button>
           );

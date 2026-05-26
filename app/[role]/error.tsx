@@ -15,17 +15,17 @@ export default function RoleError({
   return (
     <div className="max-w-lg mx-auto px-4 py-24 text-center">
       <p className="text-red-400 text-lg font-semibold mb-2">Something went wrong</p>
-      <p className="text-[#555] text-sm mb-6">{error.message}</p>
+      <p className="text-brand-text-muted text-sm mb-6">{error.message}</p>
       <div className="flex gap-3 justify-center">
         <button
           onClick={reset}
-          className="bg-[#f97316] hover:bg-[#ea580c] text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors"
+          className="btn-primary text-sm font-medium px-6 py-2"
         >
           Try again
         </button>
         <Link
           href="/"
-          className="bg-[#1c1c1c] border border-[#2a2a2a] hover:border-[#f97316] text-[#a1a1aa] text-sm font-medium px-6 py-2 rounded-lg transition-colors"
+          className="card-inner hover:border-brand-orange text-brand-text-secondary text-sm font-medium px-6 py-2 rounded-lg transition-colors duration-150"
         >
           Back to roles
         </Link>

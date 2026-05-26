@@ -103,10 +103,10 @@ export default function QuestionsTab() {
           <button
             key={r.id}
             onClick={() => setSelectedRole(r)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors duration-150 ${
               selectedRole.id === r.id
-                ? "bg-[#f97316] border-[#f97316] text-white"
-                : "bg-[#141414] border-[#2a2a2a] text-[#777] hover:text-white"
+                ? "bg-brand-orange border-brand-orange text-white"
+                : "bg-brand-black-soft border-brand-black-border text-brand-text-tertiary hover:text-white"
             }`}
           >
             {r.name}
@@ -128,20 +128,20 @@ export default function QuestionsTab() {
         </select>
         <button
           onClick={() => setShowAddForm((v) => !v)}
-          className="bg-[#f97316] hover:bg-[#ea580c] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          className="btn-primary text-sm font-medium px-4 py-2"
         >
           {showAddForm ? "Cancel" : "+ Add Question"}
         </button>
-        <span className="text-[#555] text-sm ml-auto">{questions.length} questions</span>
+        <span className="text-brand-text-muted text-sm tabular-nums ml-auto">{questions.length} questions</span>
       </div>
 
       {showAddForm && (
-        <form onSubmit={addQuestion} className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-5 mb-6 space-y-4">
+        <form onSubmit={addQuestion} className="card p-5 mb-6 space-y-4">
           <p className="text-white font-medium text-sm">New Question — {selectedRole.name}</p>
           {addError && <p className="text-red-400 text-xs">{addError}</p>}
 
           <div>
-            <label className="text-[#555] text-xs uppercase tracking-wide block mb-1">Specialisation</label>
+            <label className="text-brand-text-muted text-xs uppercase tracking-wide block mb-1">Specialisation</label>
             <select
               value={newQ.category_id}
               onChange={(e) => setNewQ((q) => ({ ...q, category_id: e.target.value }))}
@@ -155,7 +155,7 @@ export default function QuestionsTab() {
           </div>
 
           <div>
-            <label className="text-[#555] text-xs uppercase tracking-wide block mb-1">Question</label>
+            <label className="text-brand-text-muted text-xs uppercase tracking-wide block mb-1">Question</label>
             <textarea
               required
               rows={2}
@@ -167,7 +167,7 @@ export default function QuestionsTab() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-[#555] text-xs uppercase tracking-wide block">
+            <label className="text-brand-text-muted text-xs uppercase tracking-wide block">
               Options — select the correct answer
             </label>
             {newQ.options.map((opt, i) => (
@@ -177,10 +177,10 @@ export default function QuestionsTab() {
                   name="correct"
                   checked={newQ.correct_answer_index === i}
                   onChange={() => setNewQ((q) => ({ ...q, correct_answer_index: i }))}
-                  className="accent-[#f97316] w-4 h-4 shrink-0"
+                  className="accent-brand-orange w-4 h-4 shrink-0"
                   title="Mark as correct answer"
                 />
-                <span className="text-[#f97316] font-bold text-sm w-5">{OPTION_LABEL(i)}.</span>
+                <span className="text-brand-orange font-bold text-sm w-5">{OPTION_LABEL(i)}.</span>
                 <input
                   required
                   type="text"
@@ -200,7 +200,7 @@ export default function QuestionsTab() {
           <button
             type="submit"
             disabled={adding}
-            className="bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-50 text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors"
+            className="btn-primary disabled:opacity-50 text-sm font-medium px-6 py-2"
           >
             {adding ? "Saving..." : "Save Question"}
           </button>
@@ -210,24 +210,24 @@ export default function QuestionsTab() {
       {loading ? (
         <Spinner />
       ) : questions.length === 0 ? (
-        <p className="text-[#555] text-sm text-center py-8">No questions found.</p>
+        <p className="text-brand-text-muted text-sm text-center py-8">No questions found.</p>
       ) : (
         <div className="space-y-2">
           {questions.map((q) => (
             <div
               key={q.id}
-              className={`bg-[#141414] border rounded-xl p-4 ${q.active ? "border-[#2a2a2a]" : "border-[#1a1a1a] opacity-50"}`}
+              className={`card p-4 ${!q.active && "opacity-50"}`}
             >
               <div className="flex items-start gap-3 flex-wrap">
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium mb-2 ${q.active ? "text-white" : "text-[#555]"}`}>
+                  <p className={`text-sm font-medium mb-2 ${q.active ? "text-white" : "text-brand-text-muted"}`}>
                     {q.question_text}
                   </p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 mb-2">
                     {q.options.map((opt, i) => (
                       <p
                         key={i}
-                        className={`text-xs ${i === q.correct_answer_index ? "text-[#f97316] font-semibold" : "text-[#555]"}`}
+                        className={`text-xs ${i === q.correct_answer_index ? "text-brand-orange font-semibold" : "text-brand-text-muted"}`}
                       >
                         {OPTION_LABEL(i)}. {opt}{i === q.correct_answer_index && " ✓"}
                       </p>
@@ -248,15 +248,15 @@ export default function QuestionsTab() {
                   <div className="flex gap-3">
                     <button
                       onClick={() => toggleActive(q)}
-                      className={`text-xs font-medium transition-colors ${
-                        q.active ? "text-green-400 hover:text-[#555]" : "text-[#555] hover:text-green-400"
+                      className={`text-xs font-medium transition-colors duration-150 ${
+                        q.active ? "text-green-400 hover:text-brand-text-muted" : "text-brand-text-muted hover:text-green-400"
                       }`}
                     >
                       {q.active ? "Active" : "Inactive"}
                     </button>
                     <button
                       onClick={() => deleteQuestion(q.id)}
-                      className="text-[#555] hover:text-red-400 text-xs transition-colors"
+                      className="text-brand-text-muted hover:text-red-400 text-xs transition-colors duration-150"
                     >
                       Delete
                     </button>

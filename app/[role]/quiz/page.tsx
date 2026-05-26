@@ -16,6 +16,7 @@ function QuizInner() {
   const router       = useRouter();
 
   const applicantId = searchParams.get("aid") ?? null;
+  const jobId       = searchParams.get("job") ?? null;
 
   const [state, setState]               = useState<QuizState>("loading");
   const [categories, setCategories]     = useState<Category[]>([]);
@@ -42,6 +43,7 @@ function QuizInner() {
         const body: Record<string, string> = { role_slug: params.role };
         if (category)    body.category_slug = category.slug;
         if (applicantId) body.applicant_id  = applicantId;
+        if (jobId)       body.job_id        = jobId;
         const res = await fetch("/api/quiz/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -63,11 +65,13 @@ function QuizInner() {
         setState("error");
       }
     },
-    [params.role, applicantId]
+    [params.role, applicantId, jobId]
   );
 
   useEffect(() => {
     async function init() {
+      // If applying to a specific job, skip category picker — job determines category
+      if (jobId) { startQuiz(null); return; }
       try {
         const res = await fetch(`/api/quiz/categories?role=${params.role}`);
         if (!res.ok) { startQuiz(null); return; }
@@ -81,7 +85,7 @@ function QuizInner() {
       }
     }
     init();
-  }, [params.role, startQuiz]);
+  }, [params.role, startQuiz, jobId]);
 
   const submitQuiz = useCallback(
     async (finalAnswers: number[], finalTimes: number[], forceFail = false) => {

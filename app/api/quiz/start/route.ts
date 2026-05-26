@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
   }
 
-  const { role_slug, category_slug, applicant_id } = await req.json();
+  const { role_slug, category_slug, applicant_id, job_id } = await req.json();
   if (!role_slug) return NextResponse.json({ error: "role_slug required" }, { status: 400 });
 
   const db = createServiceClient();
@@ -69,14 +69,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Role not found" }, { status: 404 });
   }
 
+  // Resolve effective category: job_id takes priority, then category_slug
+  let effectiveCategorySlug = category_slug ?? null;
+  if (job_id) {
+    const { data: job } = await db
+      .from("apply_job_postings")
+      .select("category_id, apply_categories ( slug )")
+      .eq("id", job_id)
+      .eq("status", "published")
+      .single();
+    if (job && job.apply_categories) {
+      const cats = job.apply_categories as unknown as { slug: string } | null;
+      if (cats) effectiveCategorySlug = cats.slug;
+    }
+  }
+
   let selectedQuestions: { id: string; question_text: string; options: string[] }[];
 
-  if (category_slug) {
+  if (effectiveCategorySlug) {
     const { data: category } = await db
       .from("apply_categories")
       .select("id, name")
       .eq("role_id", role.id)
-      .eq("slug", category_slug)
+      .eq("slug", effectiveCategorySlug)
       .eq("active", true)
       .single();
 

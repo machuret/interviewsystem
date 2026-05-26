@@ -1,7 +1,7 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useRef, Suspense } from "react";
 
 const ROLE_NAMES: Record<string, string> = {
   "marketing":           "Marketing Specialist",
@@ -19,6 +19,16 @@ type Form = {
   skills_tools: string; software_used: string; task_description: string;
 };
 
+type JobDetails = {
+  id: string;
+  title: string;
+  description: string | null;
+  salary_from: number | null;
+  salary_to: number | null;
+  apply_roles: { name: string; slug: string };
+  apply_categories: { name: string; slug: string } | null;
+};
+
 const EMPTY_FORM: Form = {
   first_name: "", last_name: "", email: "",
   facebook_link: "", instagram_link: "", phone: "",
@@ -28,9 +38,12 @@ const EMPTY_FORM: Form = {
   skills_tools: "", software_used: "", task_description: "",
 };
 
-export default function ApplyPage() {
-  const params = useParams<{ role: string }>();
-  const router = useRouter();
+function ApplyInner() {
+  const params       = useParams<{ role: string }>();
+  const searchParams = useSearchParams();
+  const router       = useRouter();
+
+  const jobId = searchParams.get("job") ?? null;
 
   const [step, setStep]               = useState(1);
   const [form, setForm]               = useState<Form>(EMPTY_FORM);
@@ -39,9 +52,19 @@ export default function ApplyPage() {
   const [error, setError]             = useState("");
   const [internetMbps, setInternetMbps] = useState<number | null>(null);
   const [speedTesting, setSpeedTesting] = useState(false);
+  const [jobDetails, setJobDetails]   = useState<JobDetails | null>(null);
   const speedDoneRef = useRef(false);
 
   const roleName = ROLE_NAMES[params.role] ?? params.role;
+
+  // Fetch job details if job param provided
+  useEffect(() => {
+    if (!jobId) return;
+    fetch(`/api/jobs/${jobId}`)
+      .then((r) => r.json())
+      .then((data) => { if (!data.error) setJobDetails(data); })
+      .catch(() => {});
+  }, [jobId]);
 
   useEffect(() => {
     if (step !== 2 || speedDoneRef.current) return;
@@ -79,7 +102,11 @@ export default function ApplyPage() {
         res = await fetch("/api/applicants", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role_slug: params.role, ...form }),
+          body: JSON.stringify({
+            role_slug: params.role,
+            job_id: jobId ?? undefined,
+            ...form,
+          }),
         });
       } else {
         res = await fetch(`/api/applicants/${applicantId}`, {
@@ -112,7 +139,12 @@ export default function ApplyPage() {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      router.push(`/${params.role}/typing-test${applicantId ? `?aid=${applicantId}` : ""}`);
+      let url = `/${params.role}/typing-test`;
+      const qs: string[] = [];
+      if (applicantId) qs.push(`aid=${applicantId}`);
+      if (jobId)       qs.push(`job=${jobId}`);
+      if (qs.length)   url += `?${qs.join("&")}`;
+      router.push(url);
     }
   }
 
@@ -120,11 +152,39 @@ export default function ApplyPage() {
 
   const STEPS = ["Basic Info", "Your Setup", "Work Experience"];
 
+  const displayTitle = jobDetails?.title ?? roleName;
+  const displayRole  = jobDetails?.apply_roles.name ?? roleName;
+
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
 
+      {/* Job banner — shown when applying to a specific posting */}
+      {jobDetails && (
+        <div className="card-inner p-4 mb-6 border-brand-orange/30">
+          <p className="text-xs text-brand-orange font-semibold uppercase tracking-wider mb-1">You're applying for</p>
+          <h2 className="text-white font-semibold text-base">{jobDetails.title}</h2>
+          <p className="text-brand-text-secondary text-sm">
+            {jobDetails.apply_roles.name}
+            {jobDetails.apply_categories && (
+              <span className="text-brand-text-muted"> · {jobDetails.apply_categories.name}</span>
+            )}
+          </p>
+          {(jobDetails.salary_from || jobDetails.salary_to) && (
+            <p className="text-brand-orange text-sm mt-1 tabular-nums font-medium">
+              ₱{jobDetails.salary_from?.toLocaleString() ?? "—"}
+              {jobDetails.salary_to ? ` – ₱${jobDetails.salary_to.toLocaleString()}` : "+"}/mo
+            </p>
+          )}
+          {jobDetails.description && (
+            <p className="text-brand-text-muted text-xs mt-2 leading-relaxed line-clamp-3">
+              {jobDetails.description}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="text-center mb-8">
-        <p className="section-label mb-1">{roleName}</p>
+        <p className="section-label mb-1">{displayRole}</p>
         <h1 className="text-fluid-heading font-bold text-white mb-1">Tell us about yourself</h1>
         <p className="text-brand-text-muted text-sm">Step {step} of 3 — {STEPS[step - 1]}</p>
       </div>
@@ -292,4 +352,8 @@ function F({ label, required, children }: { label: string; required?: boolean; c
       {children}
     </div>
   );
+}
+
+export default function ApplyPage() {
+  return <Suspense><ApplyInner /></Suspense>;
 }

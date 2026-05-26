@@ -9,9 +9,10 @@ const CandidatesTab = dynamic(() => import("./_components/CandidatesTab"), { loa
 const AnalyticsTab  = dynamic(() => import("./_components/AnalyticsTab"),  { loading: () => <Spinner /> });
 const CategoriesTab = dynamic(() => import("./_components/CategoriesTab"), { loading: () => <Spinner /> });
 const QuestionsTab  = dynamic(() => import("./_components/QuestionsTab"),  { loading: () => <Spinner /> });
+const JobsTab       = dynamic(() => import("./_components/JobsTab"),       { loading: () => <Spinner /> });
 
-type Tab = "dashboard" | "candidates" | "analytics" | "categories" | "questions";
-const TABS: Tab[] = ["dashboard", "candidates", "analytics", "categories", "questions"];
+type Tab = "dashboard" | "candidates" | "analytics" | "categories" | "questions" | "jobs";
+const TABS: Tab[] = ["dashboard", "candidates", "analytics", "categories", "questions", "jobs"];
 
 export default function AdminPage() {
   const [authed, setAuthed]         = useState<boolean | null>(null);
@@ -113,6 +114,7 @@ export default function AdminPage() {
       {tab === "analytics"  && <AnalyticsTab />}
       {tab === "categories" && <CategoriesTab />}
       {tab === "questions"  && <QuestionsTab />}
+      {tab === "jobs"       && <JobsTab />}
     </div>
   );
 }

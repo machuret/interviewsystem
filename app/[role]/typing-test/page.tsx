@@ -12,6 +12,7 @@ function TypingTestInner() {
   const router       = useRouter();
 
   const applicantId = searchParams.get("aid") ?? null;
+  const jobId       = searchParams.get("job") ?? null;
 
   const [phase, setPhase]       = useState<"intro" | "test" | "done">("intro");
   const [typed, setTyped]       = useState("");
@@ -76,7 +77,10 @@ function TypingTestInner() {
   }
 
   function proceed() {
-    router.push(`/${params.role}/quiz${applicantId ? `?aid=${applicantId}` : ""}`);
+    const qs: string[] = [];
+    if (applicantId) qs.push(`aid=${applicantId}`);
+    if (jobId)       qs.push(`job=${jobId}`);
+    router.push(`/${params.role}/quiz${qs.length ? `?${qs.join("&")}` : ""}`);
   }
 
   function renderPassage() {

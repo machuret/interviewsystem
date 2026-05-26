@@ -128,3 +128,19 @@ export const STATUS_HEADER_COLORS: Record<string, string> = {
 };
 
 export const OPTION_LABEL = (i: number) => String.fromCharCode(65 + i);
+
+export type JobPosting = {
+  id: string;
+  role_id: string;
+  category_id: string | null;
+  title: string;
+  description: string | null;
+  requirements: string | null;
+  salary_from: number | null;
+  salary_to: number | null;
+  status: "draft" | "published";
+  created_at: string;
+  updated_at: string;
+  apply_roles?: { id: string; name: string; slug: string };
+  apply_categories?: { id: string; name: string; slug: string } | null;
+};

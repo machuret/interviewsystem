@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { role_slug, first_name, email } = body;
+  const { role_slug, first_name, email, job_id } = body;
 
   if (!role_slug || !first_name?.trim() || !email?.trim()) {
     return NextResponse.json({ error: "role_slug, first_name, and email required" }, { status: 400 });
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       role_slug,
       first_name: (first_name as string).trim(),
       email: normalizedEmail,
+      ...(job_id ? { job_id } : {}),
       ...buildApplicantFields(body),
     })
     .select("id")

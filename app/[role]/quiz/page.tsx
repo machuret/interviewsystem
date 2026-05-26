@@ -1,0 +1,298 @@
+"use client";
+
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+
+type Question = {
+  id: string;
+  question_text: string;
+  options: string[];
+};
+
+type QuizState = "loading" | "ready" | "question" | "submitting" | "done" | "error";
+
+const TIMER_SECONDS = 45;
+
+export default function QuizPage() {
+  const params = useParams<{ role: string }>();
+  const router = useRouter();
+
+  const [state, setState]           = useState<QuizState>("loading");
+  const [questions, setQuestions]   = useState<Question[]>([]);
+  const [sessionId, setSessionId]   = useState<string>("");
+  const [roleName, setRoleName]     = useState<string>("");
+  const [current, setCurrent]       = useState(0);
+  const [answers, setAnswers]       = useState<number[]>([]);
+  const [selected, setSelected]     = useState<number | null>(null);
+  const [timeLeft, setTimeLeft]     = useState(TIMER_SECONDS);
+  const [tabSwitches, setTabSwitches] = useState(0);
+  const [error, setError]           = useState("");
+
+  const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tabRef       = useRef(0);
+  const submittingRef = useRef(false);
+
+  // ── Fetch questions ──────────────────────────────────────────────────────
+  useEffect(() => {
+    async function startQuiz() {
+      try {
+        const res = await fetch("/api/quiz/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role_slug: params.role }),
+        });
+        if (!res.ok) {
+          const { error: msg } = await res.json();
+          setError(msg || "Failed to load quiz.");
+          setState("error");
+          return;
+        }
+        const data = await res.json();
+        setQuestions(data.questions);
+        setSessionId(data.session_id);
+        setRoleName(data.role.name);
+        setState("ready");
+      } catch {
+        setError("Network error. Please try again.");
+        setState("error");
+      }
+    }
+    startQuiz();
+  }, [params.role]);
+
+  // ── Submit answers ───────────────────────────────────────────────────────
+  const submitQuiz = useCallback(
+    async (finalAnswers: number[], forceFail = false) => {
+      if (submittingRef.current) return;
+      submittingRef.current = true;
+      if (timerRef.current) clearInterval(timerRef.current);
+      setState("submitting");
+
+      try {
+        const res = await fetch("/api/quiz/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: sessionId,
+            answers: finalAnswers,
+            tab_switches: tabRef.current,
+            force_fail: forceFail,
+          }),
+        });
+        const data = await res.json();
+        if (data.passed) {
+          router.push(`/${params.role}/pass?sid=${sessionId}`);
+        } else {
+          router.push(`/${params.role}/fail`);
+        }
+      } catch {
+        router.push(`/${params.role}/fail`);
+      }
+    },
+    [sessionId, params.role, router]
+  );
+
+  // ── Per-question timer ───────────────────────────────────────────────────
+  const startTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimeLeft(TIMER_SECONDS);
+    timerRef.current = setInterval(() => {
+      setTimeLeft((t) => {
+        if (t <= 1) {
+          clearInterval(timerRef.current!);
+          // Time expired — advance with -1 (wrong)
+          setAnswers((prev) => {
+            const next = [...prev, -1];
+            setCurrent((c) => {
+              const nextIdx = c + 1;
+              if (nextIdx >= questions.length) {
+                submitQuiz(next);
+              } else {
+                setSelected(null);
+                setTimeout(startTimer, 50);
+              }
+              return nextIdx;
+            });
+            return next;
+          });
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+  }, [questions.length, submitQuiz]);
+
+  // ── Tab-switch detection ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (state !== "question") return;
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        tabRef.current += 1;
+        setTabSwitches(tabRef.current);
+        // Auto-fail
+        if (timerRef.current) clearInterval(timerRef.current);
+        submitQuiz(answers, true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [state, answers, submitQuiz]);
+
+  // ── Disable browser back ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (state !== "question") return;
+    const block = () => history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", block);
+    history.pushState(null, "", window.location.href);
+    return () => window.removeEventListener("popstate", block);
+  }, [state]);
+
+  // ── Start first question ─────────────────────────────────────────────────
+  function beginQuiz() {
+    setState("question");
+    startTimer();
+  }
+
+  // ── Answer selection ─────────────────────────────────────────────────────
+  function handleSelect(idx: number) {
+    if (selected !== null) return; // already answered
+    if (timerRef.current) clearInterval(timerRef.current);
+    setSelected(idx);
+
+    const newAnswers = [...answers, idx];
+    setAnswers(newAnswers);
+
+    // Move after short pause so user sees selection
+    setTimeout(() => {
+      const nextIdx = current + 1;
+      if (nextIdx >= questions.length) {
+        submitQuiz(newAnswers);
+      } else {
+        setCurrent(nextIdx);
+        setSelected(null);
+        startTimer();
+      }
+    }, 600);
+  }
+
+  // ── Timer bar colour ─────────────────────────────────────────────────────
+  const timerPct = (timeLeft / TIMER_SECONDS) * 100;
+  const timerColor = timeLeft <= 10 ? "bg-red-500" : "bg-[#f97316]";
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  if (state === "loading") {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <div className="w-8 h-8 border-2 border-[#f97316] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-[#777]">Loading your quiz...</p>
+      </div>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <p className="text-red-400 mb-4">{error}</p>
+        <a href="/" className="text-[#f97316] underline">← Back to roles</a>
+      </div>
+    );
+  }
+
+  if (state === "submitting") {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <div className="w-8 h-8 border-2 border-[#f97316] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-[#777]">Submitting your answers...</p>
+      </div>
+    );
+  }
+
+  if (state === "ready") {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <p className="text-[#f97316] text-sm font-semibold uppercase tracking-widest mb-2">
+          {roleName}
+        </p>
+        <h1 className="text-3xl font-bold text-white mb-4">Ready to start?</h1>
+        <p className="text-[#a1a1aa] mb-2">
+          10 questions · 45 seconds each · no going back
+        </p>
+        <p className="text-[#a1a1aa] mb-8 text-sm">
+          Switching tabs will immediately end your attempt.
+        </p>
+        <button
+          onClick={beginQuiz}
+          className="bg-[#f97316] hover:bg-[#ea580c] text-white font-bold px-10 py-4 rounded-xl text-lg transition-colors"
+        >
+          Start Quiz
+        </button>
+      </div>
+    );
+  }
+
+  const q = questions[current];
+  if (!q) return null;
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-8">
+      {/* Question counter */}
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-[#555] text-sm">
+          Question {current + 1} of {questions.length}
+        </span>
+        <span
+          className={`text-sm font-bold tabular-nums ${
+            timeLeft <= 10 ? "text-red-400" : "text-[#f97316]"
+          }`}
+        >
+          {timeLeft}s
+        </span>
+      </div>
+
+      {/* Timer bar */}
+      <div className="h-1 w-full bg-[#2a2a2a] rounded-full mb-8 overflow-hidden">
+        <div
+          className={`h-1 rounded-full transition-all duration-1000 ${timerColor}`}
+          style={{ width: `${timerPct}%` }}
+        />
+      </div>
+
+      {/* Question */}
+      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-6">
+        <p className="text-white text-lg font-medium leading-relaxed">{q.question_text}</p>
+      </div>
+
+      {/* Options */}
+      <div className="grid gap-3">
+        {q.options.map((option, idx) => {
+          let style =
+            "w-full text-left bg-[#141414] border border-[#2a2a2a] rounded-xl px-5 py-4 text-[#e5e5e5] text-sm font-medium transition-all duration-150 cursor-pointer";
+
+          if (selected !== null) {
+            if (idx === selected) {
+              style += " border-[#f97316] bg-[#1c1c1c] text-white";
+            } else {
+              style += " opacity-40 cursor-not-allowed";
+            }
+          } else {
+            style += " hover:border-[#f97316] hover:bg-[#1c1c1c] hover:text-white";
+          }
+
+          return (
+            <button
+              key={idx}
+              className={style}
+              onClick={() => handleSelect(idx)}
+              disabled={selected !== null}
+            >
+              <span className="text-[#f97316] font-bold mr-3">
+                {String.fromCharCode(65 + idx)}.
+              </span>
+              {option}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

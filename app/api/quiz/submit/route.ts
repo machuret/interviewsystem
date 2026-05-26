@@ -1,0 +1,75 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServiceClient } from "@/lib/supabase-server";
+
+const MAX_SECONDS_PER_QUIZ = 10 * 45 + 60; // 10 questions × 45s + 60s grace
+
+export async function POST(req: NextRequest) {
+  const { session_id, answers, tab_switches = 0, force_fail = false } = await req.json();
+
+  if (!session_id || !Array.isArray(answers)) {
+    return NextResponse.json({ error: "session_id and answers required" }, { status: 400 });
+  }
+
+  const db = createServiceClient();
+
+  // Fetch session
+  const { data: session, error: sessErr } = await db
+    .from("apply_quiz_sessions")
+    .select("id, role_id, started_at, completed_at, question_ids")
+    .eq("id", session_id)
+    .single();
+
+  if (sessErr || !session) {
+    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
+
+  if (session.completed_at) {
+    return NextResponse.json({ error: "Session already completed" }, { status: 409 });
+  }
+
+  const now = new Date();
+  const started = new Date(session.started_at);
+  const elapsedSeconds = (now.getTime() - started.getTime()) / 1000;
+
+  // Server-side timing validation — generous grace for network latency
+  const timedOut = elapsedSeconds > MAX_SECONDS_PER_QUIZ;
+  const autoFail = force_fail || tab_switches > 0 || timedOut;
+
+  let score = 0;
+  let passed = false;
+
+  if (!autoFail) {
+    // Fetch correct answers for these question IDs
+    const questionIds: string[] = session.question_ids;
+
+    const { data: questions, error: qErr } = await db
+      .from("apply_questions")
+      .select("id, correct_answer_index")
+      .in("id", questionIds);
+
+    if (qErr || !questions) {
+      return NextResponse.json({ error: "Failed to fetch questions" }, { status: 500 });
+    }
+
+    // Score in the original session order
+    for (let i = 0; i < questionIds.length; i++) {
+      const q = questions.find((x) => x.id === questionIds[i]);
+      if (q && answers[i] === q.correct_answer_index) score++;
+    }
+
+    passed = score >= 7;
+  }
+
+  // Update session
+  await db
+    .from("apply_quiz_sessions")
+    .update({
+      score,
+      passed,
+      completed_at: now.toISOString(),
+      tab_switches,
+    })
+    .eq("id", session_id);
+
+  return NextResponse.json({ passed, score, auto_fail: autoFail });
+}

@@ -26,7 +26,7 @@ function pickRandom<T>(arr: T[], n: number): T[] {
 }
 
 export async function POST(req: NextRequest) {
-  const { role_slug, category_slug } = await req.json();
+  const { role_slug, category_slug, applicant_id } = await req.json();
   if (!role_slug) return NextResponse.json({ error: "role_slug required" }, { status: 400 });
 
   const db = createServiceClient();
@@ -147,6 +147,7 @@ export async function POST(req: NextRequest) {
       question_ids: questionIds,
       option_orders: optionOrders,
       ip_address: ip,
+      applicant_id: applicant_id ?? null,
     })
     .select("id, started_at")
     .single();

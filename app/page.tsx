@@ -38,9 +38,9 @@ export default function HomePage() {
           Think you've got what it takes?
         </h1>
         <p className="text-[#a1a1aa] text-lg max-w-xl mx-auto">
-          Select the role you're applying for. You'll answer 10 skill-based
-          questions with a 45-second timer per question. Score 7 or above and
-          you'll be invited to submit your CV.
+          Select the role you're applying for. You'll share your details, then
+          answer 10 skill-based questions with a 45-second timer. Score 7 or
+          above and you'll be invited to submit your CV.
         </p>
       </div>
 
@@ -57,7 +57,7 @@ export default function HomePage() {
         {ROLES.map((role) => (
           <Link
             key={role.slug}
-            href={`/${role.slug}/quiz`}
+            href={`/${role.slug}/apply`}
             className="group block bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 hover:border-[#f97316] hover:bg-[#1c1c1c] transition-all duration-200"
           >
             <div className="text-3xl mb-3">{role.icon}</div>
@@ -66,7 +66,7 @@ export default function HomePage() {
             </h2>
             <p className="text-[#777] text-sm">{role.description}</p>
             <div className="mt-4 text-[#f97316] text-sm font-medium flex items-center gap-1">
-              Start quiz <span className="group-hover:translate-x-1 transition-transform inline-block">→</span>
+              Apply now <span className="group-hover:translate-x-1 transition-transform inline-block">→</span>
             </div>
           </Link>
         ))}

@@ -1,32 +1,43 @@
 "use client";
 
-import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { useState, Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
 
 function PassForm() {
   const params       = useParams<{ role: string }>();
   const searchParams = useSearchParams();
-  const router       = useRouter();
   const sessionId    = searchParams.get("sid") ?? "";
 
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone]             = useState(false);
-  const [error, setError]           = useState("");
+  const [submitting, setSubmitting]       = useState(false);
+  const [done, setDone]                   = useState(false);
+  const [error, setError]                 = useState("");
+  const [practicalPrompt, setPracticalPrompt] = useState<string | null>(null);
 
   const [form, setForm] = useState({
-    full_name:             "",
-    email:                 "",
-    phone:                 "",
-    location:              "",
+    full_name:              "",
+    email:                  "",
+    phone:                  "",
+    location:               "",
     salary_expectation_php: "",
-    payment_methods:       [] as string[],
-    paypal_email:          "",
-    wise_email:            "",
-    differentiator:        "",
-    cv_link:               "",
+    payment_methods:        [] as string[],
+    paypal_email:           "",
+    wise_email:             "",
+    differentiator:         "",
+    cv_link:                "",
+    video_intro_url:        "",
+    practical_response:     "",
+    writing_sample:         "",
   });
-  const [cvFile, setCvFile]     = useState<File | null>(null);
-  const [cvMode, setCvMode]     = useState<"file" | "link">("file");
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [cvMode, setCvMode] = useState<"file" | "link">("file");
+
+  useEffect(() => {
+    if (!params.role) return;
+    fetch(`/api/quiz/task?role=${params.role}`)
+      .then((r) => r.json())
+      .then((d) => setPracticalPrompt(d.prompt ?? null))
+      .catch(() => {});
+  }, [params.role]);
 
   function update(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -77,16 +88,19 @@ function PassForm() {
     setSubmitting(true);
 
     const fd = new FormData();
-    fd.append("session_id", sessionId);
-    fd.append("full_name",             form.full_name);
-    fd.append("email",                 form.email);
-    fd.append("phone",                 form.phone);
-    fd.append("location",              form.location);
+    fd.append("session_id",             sessionId);
+    fd.append("full_name",              form.full_name);
+    fd.append("email",                  form.email);
+    fd.append("phone",                  form.phone);
+    fd.append("location",               form.location);
     fd.append("salary_expectation_php", form.salary_expectation_php);
-    form.payment_methods.forEach((m) => fd.append("payment_methods", m));
-    if (form.paypal_email) fd.append("paypal_email", form.paypal_email);
-    if (form.wise_email)   fd.append("wise_email",   form.wise_email);
-    fd.append("differentiator", form.differentiator);
+    form.payment_methods.forEach((m)  => fd.append("payment_methods", m));
+    if (form.paypal_email)  fd.append("paypal_email",       form.paypal_email);
+    if (form.wise_email)    fd.append("wise_email",         form.wise_email);
+    fd.append("differentiator",         form.differentiator);
+    if (form.video_intro_url)    fd.append("video_intro_url",    form.video_intro_url);
+    if (form.practical_response) fd.append("practical_response", form.practical_response);
+    if (form.writing_sample)     fd.append("writing_sample",     form.writing_sample);
 
     if (cvMode === "file" && cvFile) {
       fd.append("cv_file", cvFile);
@@ -315,6 +329,59 @@ function PassForm() {
               <p className="text-[#555] text-xs mt-1">Must be a Google Docs URL</p>
             </div>
           )}
+        </div>
+
+        {/* Video intro */}
+        <div>
+          <label>Video Introduction (optional)</label>
+          <input
+            type="url"
+            placeholder="https://loom.com/share/... or Google Drive link"
+            value={form.video_intro_url}
+            onChange={(e) => update("video_intro_url", e.target.value)}
+          />
+          <p className="text-[#555] text-xs mt-1">
+            Record a 60–90 second video introducing yourself. Loom or Google Drive link accepted.
+          </p>
+        </div>
+
+        {/* Practical task */}
+        {practicalPrompt && (
+          <div>
+            <div className="bg-[#1c1c1c] border border-[#2a2a2a] rounded-xl p-4 mb-3">
+              <p className="text-[#f97316] text-xs font-semibold uppercase tracking-widest mb-2">
+                Practical Task
+              </p>
+              <p className="text-[#e5e5e5] text-sm leading-relaxed">{practicalPrompt}</p>
+            </div>
+            <textarea
+              rows={5}
+              placeholder="Write your response here..."
+              value={form.practical_response}
+              onChange={(e) => update("practical_response", e.target.value)}
+              className="resize-none"
+            />
+          </div>
+        )}
+
+        {/* English writing sample */}
+        <div>
+          <div className="bg-[#1c1c1c] border border-[#2a2a2a] rounded-xl p-4 mb-3">
+            <p className="text-[#f97316] text-xs font-semibold uppercase tracking-widest mb-2">
+              English Writing Sample
+            </p>
+            <p className="text-[#e5e5e5] text-sm leading-relaxed">
+              In 3–5 sentences, describe a time you had to manage a difficult situation at work —
+              what happened, what you did, and what the outcome was.
+            </p>
+          </div>
+          <textarea
+            rows={4}
+            placeholder="Write your response here..."
+            value={form.writing_sample}
+            onChange={(e) => update("writing_sample", e.target.value)}
+            className="resize-none"
+          />
         </div>
 
         {/* Differentiator */}

@@ -1,11 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase-server";
 
+const DEDUP_DAYS = 30;
+
+function getClientIp(req: NextRequest): string | null {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return req.headers.get("x-real-ip") ?? null;
+}
+
+function shuffleOptions(options: string[]): { shuffled: string[]; permutation: number[] } {
+  const permutation = options.map((_, i) => i);
+  for (let i = permutation.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [permutation[i], permutation[j]] = [permutation[j], permutation[i]];
+  }
+  const shuffled = permutation.map((orig) => options[orig]);
+  return { shuffled, permutation };
+}
+
 export async function POST(req: NextRequest) {
   const { role_slug } = await req.json();
   if (!role_slug) return NextResponse.json({ error: "role_slug required" }, { status: 400 });
 
   const db = createServiceClient();
+  const ip = getClientIp(req);
+
+  // IP-based 30-day deduplication block
+  if (ip) {
+    const since = new Date(Date.now() - DEDUP_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const { data: prior } = await db
+      .from("apply_quiz_sessions")
+      .select("id")
+      .eq("ip_address", ip)
+      .eq("passed", true)
+      .gte("started_at", since)
+      .limit(1)
+      .maybeSingle();
+
+    if (prior) {
+      return NextResponse.json(
+        { error: "You have already completed this assessment recently. Please try again in 30 days." },
+        { status: 429 }
+      );
+    }
+  }
 
   // Fetch role
   const { data: role, error: roleErr } = await db
@@ -34,6 +73,14 @@ export async function POST(req: NextRequest) {
   const shuffled = allQuestions.sort(() => Math.random() - 0.5).slice(0, 10);
   const questionIds = shuffled.map((q) => q.id);
 
+  // Shuffle options per question, store permutations (server knows originals, client only sees display order)
+  const optionOrders: number[][] = [];
+  const questionsForClient = shuffled.map((q) => {
+    const { shuffled: shuffledOpts, permutation } = shuffleOptions(q.options as string[]);
+    optionOrders.push(permutation);
+    return { id: q.id, question_text: q.question_text, options: shuffledOpts };
+  });
+
   // Create session
   const { data: session, error: sessErr } = await db
     .from("apply_quiz_sessions")
@@ -41,6 +88,8 @@ export async function POST(req: NextRequest) {
       role_id: role.id,
       started_at: new Date().toISOString(),
       question_ids: questionIds,
+      option_orders: optionOrders,
+      ip_address: ip,
     })
     .select("id, started_at")
     .single();
@@ -53,10 +102,6 @@ export async function POST(req: NextRequest) {
     session_id: session.id,
     started_at: session.started_at,
     role: { name: role.name, slug: role.slug },
-    questions: shuffled.map((q) => ({
-      id: q.id,
-      question_text: q.question_text,
-      options: q.options,
-    })),
+    questions: questionsForClient,
   });
 }

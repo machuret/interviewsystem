@@ -17,20 +17,22 @@ export default function QuizPage() {
   const params = useParams<{ role: string }>();
   const router = useRouter();
 
-  const [state, setState]           = useState<QuizState>("loading");
-  const [questions, setQuestions]   = useState<Question[]>([]);
-  const [sessionId, setSessionId]   = useState<string>("");
-  const [roleName, setRoleName]     = useState<string>("");
-  const [current, setCurrent]       = useState(0);
-  const [answers, setAnswers]       = useState<number[]>([]);
-  const [selected, setSelected]     = useState<number | null>(null);
-  const [timeLeft, setTimeLeft]     = useState(TIMER_SECONDS);
+  const [state, setState]             = useState<QuizState>("loading");
+  const [questions, setQuestions]     = useState<Question[]>([]);
+  const [sessionId, setSessionId]     = useState<string>("");
+  const [roleName, setRoleName]       = useState<string>("");
+  const [current, setCurrent]         = useState(0);
+  const [answers, setAnswers]         = useState<number[]>([]);
+  const [answerTimes, setAnswerTimes] = useState<number[]>([]);
+  const [selected, setSelected]       = useState<number | null>(null);
+  const [timeLeft, setTimeLeft]       = useState(TIMER_SECONDS);
   const [tabSwitches, setTabSwitches] = useState(0);
-  const [error, setError]           = useState("");
+  const [error, setError]             = useState("");
 
-  const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const tabRef       = useRef(0);
-  const submittingRef = useRef(false);
+  const timerRef          = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tabRef            = useRef(0);
+  const submittingRef     = useRef(false);
+  const questionStartRef  = useRef<number>(0);
 
   // ── Fetch questions ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -62,7 +64,7 @@ export default function QuizPage() {
 
   // ── Submit answers ───────────────────────────────────────────────────────
   const submitQuiz = useCallback(
-    async (finalAnswers: number[], forceFail = false) => {
+    async (finalAnswers: number[], finalTimes: number[], forceFail = false) => {
       if (submittingRef.current) return;
       submittingRef.current = true;
       if (timerRef.current) clearInterval(timerRef.current);
@@ -75,6 +77,7 @@ export default function QuizPage() {
           body: JSON.stringify({
             session_id: sessionId,
             answers: finalAnswers,
+            answer_times: finalTimes,
             tab_switches: tabRef.current,
             force_fail: forceFail,
           }),
@@ -96,24 +99,29 @@ export default function QuizPage() {
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     setTimeLeft(TIMER_SECONDS);
+    questionStartRef.current = Date.now();
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current!);
-          // Time expired — advance with -1 (wrong)
-          setAnswers((prev) => {
-            const next = [...prev, -1];
-            setCurrent((c) => {
-              const nextIdx = c + 1;
-              if (nextIdx >= questions.length) {
-                submitQuiz(next);
-              } else {
-                setSelected(null);
-                setTimeout(startTimer, 50);
-              }
-              return nextIdx;
+          const elapsed = (Date.now() - questionStartRef.current) / 1000;
+          setAnswerTimes((prevTimes) => {
+            const nextTimes = [...prevTimes, elapsed];
+            setAnswers((prev) => {
+              const next = [...prev, -1];
+              setCurrent((c) => {
+                const nextIdx = c + 1;
+                if (nextIdx >= questions.length) {
+                  submitQuiz(next, nextTimes);
+                } else {
+                  setSelected(null);
+                  setTimeout(startTimer, 50);
+                }
+                return nextIdx;
+              });
+              return next;
             });
-            return next;
+            return nextTimes;
           });
           return 0;
         }
@@ -129,14 +137,13 @@ export default function QuizPage() {
       if (document.visibilityState === "hidden") {
         tabRef.current += 1;
         setTabSwitches(tabRef.current);
-        // Auto-fail
         if (timerRef.current) clearInterval(timerRef.current);
-        submitQuiz(answers, true);
+        submitQuiz(answers, answerTimes, true);
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [state, answers, submitQuiz]);
+  }, [state, answers, answerTimes, submitQuiz]);
 
   // ── Disable browser back ─────────────────────────────────────────────────
   useEffect(() => {
@@ -155,24 +162,31 @@ export default function QuizPage() {
 
   // ── Answer selection ─────────────────────────────────────────────────────
   function handleSelect(idx: number) {
-    if (selected !== null) return; // already answered
+    if (selected !== null) return;
     if (timerRef.current) clearInterval(timerRef.current);
+    const elapsed = (Date.now() - questionStartRef.current) / 1000;
     setSelected(idx);
 
     const newAnswers = [...answers, idx];
+    const newTimes = [...answerTimes, elapsed];
     setAnswers(newAnswers);
+    setAnswerTimes(newTimes);
 
-    // Move after short pause so user sees selection
     setTimeout(() => {
       const nextIdx = current + 1;
       if (nextIdx >= questions.length) {
-        submitQuiz(newAnswers);
+        submitQuiz(newAnswers, newTimes);
       } else {
         setCurrent(nextIdx);
         setSelected(null);
         startTimer();
       }
     }, 600);
+  }
+
+  // ── Prevent cheating ─────────────────────────────────────────────────────
+  function blockAction(e: React.SyntheticEvent) {
+    e.preventDefault();
   }
 
   // ── Timer bar colour ─────────────────────────────────────────────────────
@@ -234,7 +248,13 @@ export default function QuizPage() {
   if (!q) return null;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div
+      className="max-w-2xl mx-auto px-4 py-8 select-none"
+      onContextMenu={blockAction}
+      onCopy={blockAction}
+      onCut={blockAction}
+      onPaste={blockAction}
+    >
       {/* Question counter */}
       <div className="flex items-center justify-between mb-4">
         <span className="text-[#555] text-sm">

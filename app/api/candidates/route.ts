@@ -2,29 +2,56 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase-server";
 
 const GDOC_PATTERN = /^https:\/\/docs\.google\.com\/(document|file)\//;
-const MAX_CV_BYTES = 10 * 1024 * 1024; // 10 MB
-const DEDUP_DAYS = 30;
+const MAX_CV_BYTES = 10 * 1024 * 1024;
+const DEDUP_DAYS  = 30;
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
 
-  const session_id        = formData.get("session_id") as string;
-  const full_name         = (formData.get("full_name") as string)?.trim();
-  const email             = (formData.get("email") as string)?.trim().toLowerCase();
-  const phone             = (formData.get("phone") as string)?.trim();
-  const location          = (formData.get("location") as string)?.trim();
-  const salary_raw        = formData.get("salary_expectation_php") as string;
-  const payment_methods   = formData.getAll("payment_methods") as string[];
-  const paypal_email      = (formData.get("paypal_email") as string)?.trim() || null;
-  const wise_email        = (formData.get("wise_email") as string)?.trim() || null;
-  const differentiator    = (formData.get("differentiator") as string)?.trim();
-  const cv_link           = (formData.get("cv_link") as string)?.trim() || "";
-  const cv_file           = formData.get("cv_file") as File | null;
-  const video_intro_url   = (formData.get("video_intro_url") as string)?.trim() || null;
-  const practical_response = (formData.get("practical_response") as string)?.trim() || null;
-  const writing_sample    = (formData.get("writing_sample") as string)?.trim() || null;
+  const g = (key: string) => (formData.get(key) as string)?.trim() || null;
+  const gb = (key: string): boolean | null => {
+    const v = formData.get(key) as string;
+    if (v === "yes") return true;
+    if (v === "no")  return false;
+    return null;
+  };
 
-  // Basic validation
+  const session_id       = g("session_id") ?? "";
+  const full_name        = g("full_name") ?? "";    // first name
+  const last_name        = g("last_name");
+  const email            = (formData.get("email") as string)?.trim().toLowerCase() ?? "";
+  const facebook_link    = g("facebook_link");
+  const instagram_link   = g("instagram_link");
+  const phone            = g("phone") ?? "";
+  const age_raw          = formData.get("age") as string;
+  const location         = g("location") ?? "";
+  const sex              = g("sex");
+  const married          = gb("married");
+  const kids             = gb("kids");
+
+  const device_type      = g("device_type");
+  const device_brand     = g("device_brand");
+  const internet_provider = g("internet_provider");
+
+  const current_job_title  = g("current_job_title");
+  const years_experience   = g("years_experience");
+  const previous_employers = g("previous_employers");
+  const skills_tools       = g("skills_tools");
+  const software_used      = g("software_used");
+  const task_description   = g("task_description");
+
+  const salary_raw       = formData.get("salary_expectation_php") as string;
+  const payment_methods  = formData.getAll("payment_methods") as string[];
+  const paypal_email     = g("paypal_email");
+  const wise_email       = g("wise_email");
+  const differentiator   = g("differentiator") ?? "";
+  const cv_link          = g("cv_link") ?? "";
+  const cv_file          = formData.get("cv_file") as File | null;
+  const video_intro_url  = g("video_intro_url");
+  const practical_response = g("practical_response");
+  const writing_sample   = g("writing_sample");
+
+  // Required field validation
   if (!session_id || !full_name || !email || !phone || !location || !salary_raw || !differentiator) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
@@ -40,9 +67,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid salary value" }, { status: 400 });
   }
 
+  const age = age_raw ? parseInt(age_raw, 10) : null;
+
   const db = createServiceClient();
 
-  // Verify the session is passed
+  // Verify passing session
   const { data: session, error: sessErr } = await db
     .from("apply_quiz_sessions")
     .select("id, passed")
@@ -53,13 +82,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid or non-passing session" }, { status: 403 });
   }
 
-  // Email-based 30-day deduplication block
+  // Email 30-day dedup
   const since = new Date(Date.now() - DEDUP_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const { data: recentByEmail } = await db
     .from("apply_candidates")
     .select("id")
     .eq("email", email)
-    .gte("created_at", since)
+    .gte("submitted_at", since)
     .limit(1)
     .maybeSingle();
 
@@ -70,7 +99,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Check for duplicate submission on this session
+  // Session-level dedup
   const { data: existing } = await db
     .from("apply_candidates")
     .select("id")
@@ -81,6 +110,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Application already submitted" }, { status: 409 });
   }
 
+  // CV handling
   let cv_url: string;
   let cv_type: "pdf" | "gdoc";
 
@@ -97,18 +127,14 @@ export async function POST(req: NextRequest) {
     if (cv_file.size > MAX_CV_BYTES) {
       return NextResponse.json({ error: "CV file must be under 10 MB" }, { status: 400 });
     }
-
-    const bytes = await cv_file.arrayBuffer();
+    const bytes    = await cv_file.arrayBuffer();
     const filename = `${session_id}/${Date.now()}.pdf`;
-
     const { error: uploadErr } = await db.storage
       .from("apply-cvs")
       .upload(filename, bytes, { contentType: "application/pdf", upsert: false });
-
     if (uploadErr) {
       return NextResponse.json({ error: "CV upload failed: " + uploadErr.message }, { status: 500 });
     }
-
     const { data: urlData } = db.storage.from("apply-cvs").getPublicUrl(filename);
     cv_url = urlData.publicUrl;
     cv_type = "pdf";
@@ -118,10 +144,30 @@ export async function POST(req: NextRequest) {
 
   const { error: insertErr } = await db.from("apply_candidates").insert({
     session_id,
+    // Basic info
     full_name,
+    last_name,
     email,
+    facebook_link,
+    instagram_link,
     phone,
+    age,
     location,
+    sex,
+    married,
+    kids,
+    // Setup
+    device_type,
+    device_brand,
+    internet_provider,
+    // Work experience
+    current_job_title,
+    years_experience,
+    previous_employers,
+    skills_tools,
+    software_used,
+    task_description,
+    // Compensation & CV
     salary_expectation_php: salary,
     payment_methods,
     paypal_email,
@@ -129,6 +175,7 @@ export async function POST(req: NextRequest) {
     cv_url,
     cv_type,
     differentiator,
+    // Additional
     video_intro_url,
     practical_response,
     writing_sample,
@@ -138,7 +185,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to save application" }, { status: 500 });
   }
 
-  // Update session with email
   await db
     .from("apply_quiz_sessions")
     .update({ candidate_email: email })

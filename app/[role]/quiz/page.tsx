@@ -46,6 +46,12 @@ export default function QuizPage() {
     async function init() {
       try {
         const res = await fetch(`/api/quiz/categories?role=${params.role}`);
+        if (!res.ok) {
+          const text = await res.text();
+          setError(`Server error (${res.status}): ${text.slice(0, 200)}`);
+          setState("error");
+          return;
+        }
         const data = await res.json();
         const cats: Category[] = data.categories ?? [];
         setCategories(cats);
@@ -54,8 +60,8 @@ export default function QuizPage() {
         } else {
           setState("ready");
         }
-      } catch {
-        setError("Network error. Please try again.");
+      } catch (err) {
+        setError(`Network error: ${err instanceof Error ? err.message : String(err)}`);
         setState("error");
       }
     }
@@ -86,8 +92,8 @@ export default function QuizPage() {
         setSessionId(data.session_id);
         setRoleName(data.role.name);
         setState("ready");
-      } catch {
-        setError("Network error. Please try again.");
+      } catch (err) {
+        setError(`Network error: ${err instanceof Error ? err.message : String(err)}`);
         setState("error");
       }
     },

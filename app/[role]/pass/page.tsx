@@ -95,8 +95,8 @@ function PassForm() {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 text-center">
         <div className="text-5xl mb-6">🎉</div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4">Application received!</h1>
-        <p className="text-brand-text-secondary text-lg mb-6 leading-relaxed">
+        <h1 className="text-fluid-heading font-bold text-white mb-4">Application received!</h1>
+        <p className="text-brand-text-secondary text-fluid-lead mb-6 leading-relaxed">
           We've got your details and we'll be in touch within 3–5 business days if you're a strong fit.
         </p>
         <p className="text-brand-text-muted text-sm">
@@ -116,7 +116,7 @@ function PassForm() {
           <span className="text-brand-orange">✓</span>
           <span className="text-white font-medium">You passed!</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Almost there</h1>
+        <h1 className="text-fluid-heading font-bold text-white mb-2">Almost there</h1>
         <p className="text-brand-text-secondary text-sm">Just a few more details and your application is complete.</p>
       </div>
 

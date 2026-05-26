@@ -56,7 +56,7 @@ export default function AdminPage() {
   if (!authed) {
     return (
       <div className="max-w-sm mx-auto px-4 py-24">
-        <h1 className="text-2xl font-bold text-white mb-6 text-center">Admin Login</h1>
+        <h1 className="text-fluid-title font-bold text-white mb-6 text-center">Admin Login</h1>
         {loginError && <p className="text-red-400 text-sm mb-4 text-center">{loginError}</p>}
         <form onSubmit={login} className="space-y-4">
           <div>
@@ -85,7 +85,7 @@ export default function AdminPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-white">RapidTal Admin</h1>
+        <h1 className="text-fluid-title font-bold text-white">RapidTal Admin</h1>
         <button
           onClick={logout}
           className="text-brand-text-muted hover:text-red-400 text-sm px-4 py-2 rounded-lg transition-colors duration-150"

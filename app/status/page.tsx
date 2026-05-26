@@ -51,7 +51,7 @@ export default function StatusPage() {
     <div className="max-w-xl mx-auto px-4 py-16">
       <div className="text-center mb-10">
         <p className="section-label mb-3">Application Status</p>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">Check your application</h1>
+        <h1 className="text-fluid-heading font-bold text-white mb-3">Check your application</h1>
         <p className="text-brand-text-secondary text-sm">
           Enter the email address you used when applying. No account needed.
         </p>

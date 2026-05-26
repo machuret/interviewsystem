@@ -210,7 +210,7 @@ function QuizInner() {
   if (state === "pick-category") return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
       <p className="section-label mb-2">Choose your specialisation</p>
-      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">What is your focus area?</h1>
+      <h1 className="text-fluid-heading font-bold text-white mb-3">What is your focus area?</h1>
       <p className="text-brand-text-secondary mb-8 text-sm">
         Your quiz will include 5 core questions + 5 questions specific to your specialisation.
       </p>
@@ -233,7 +233,7 @@ function QuizInner() {
       <p className="section-label mb-2">
         {roleName}{selectedCategory ? ` · ${selectedCategory.name}` : ""}
       </p>
-      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4">Ready to start?</h1>
+      <h1 className="text-fluid-heading font-bold text-white mb-4">Ready to start?</h1>
       <p className="text-brand-text-secondary mb-2">10 questions · 45 seconds each · no going back</p>
       <p className="text-brand-text-secondary mb-8 text-sm">Switching tabs will immediately end your attempt.</p>
       <button onClick={beginQuiz} className="btn-primary px-10 py-4 text-lg">

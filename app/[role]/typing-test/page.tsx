@@ -97,7 +97,7 @@ function TypingTestInner() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="section-label mb-3">Typing Test</p>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4">How fast do you type?</h1>
+        <h1 className="text-fluid-heading font-bold text-white mb-4">How fast do you type?</h1>
         <p className="text-brand-text-secondary mb-2">
           You have <span className="text-white font-semibold">60 seconds</span> to type a passage as accurately and quickly as possible.
         </p>
@@ -117,7 +117,7 @@ function TypingTestInner() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="section-label mb-3">Typing Test Complete</p>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-8">Your results</h1>
+        <h1 className="text-fluid-heading font-bold text-white mb-8">Your results</h1>
         <div className="grid grid-cols-2 gap-4 mb-8">
           <div className="card p-6">
             <p className="text-4xl font-bold tabular-nums text-brand-orange mb-2">{wpm}</p>

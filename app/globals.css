@@ -19,6 +19,14 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /*
+   * Type scale — use fluid utilities on headings:
+   *   text-fluid-display  clamp(1.75rem → 3rem)     hero H1
+   *   text-fluid-heading  clamp(1.375rem → 2.25rem)  page H1s
+   *   text-fluid-title    clamp(1.125rem → 1.75rem)  UI / admin headings
+   *   text-fluid-lead     clamp(1rem → 1.25rem)      lead body copy
+   * Fallback applies line-height + tracking to any heading without a fluid class.
+   */
   h1, h2, h3, h4, h5, h6 {
     line-height: 1.15;
     letter-spacing: -0.025em;

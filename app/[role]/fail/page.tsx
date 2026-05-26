@@ -4,10 +4,10 @@ export default function FailPage() {
   return (
     <div className="max-w-xl mx-auto px-4 py-16 text-center">
       <div className="text-5xl mb-6">💪</div>
-      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+      <h1 className="text-fluid-heading font-bold text-white mb-4">
         Thanks for giving it a go
       </h1>
-      <p className="text-brand-text-secondary text-lg mb-6 leading-relaxed">
+      <p className="text-brand-text-secondary text-fluid-lead mb-6 leading-relaxed">
         We appreciate you taking the time to apply. We'll keep your profile on
         file and may reach out if a suitable opportunity arises in the future.
       </p>

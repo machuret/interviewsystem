@@ -125,7 +125,7 @@ export default function ApplyPage() {
 
       <div className="text-center mb-8">
         <p className="section-label mb-1">{roleName}</p>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Tell us about yourself</h1>
+        <h1 className="text-fluid-heading font-bold text-white mb-1">Tell us about yourself</h1>
         <p className="text-brand-text-muted text-sm">Step {step} of 3 — {STEPS[step - 1]}</p>
       </div>
 

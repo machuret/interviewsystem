@@ -6,10 +6,10 @@ export default function HomePage() {
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="text-center mb-10">
         <p className="section-label mb-3">RapidTal Talent Application</p>
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4">
+        <h1 className="text-fluid-display font-bold text-white mb-4">
           Think you've got what it takes?
         </h1>
-        <p className="text-brand-text-secondary text-lg max-w-xl mx-auto leading-relaxed">
+        <p className="text-brand-text-secondary text-fluid-lead max-w-xl mx-auto leading-relaxed">
           Select the role you're applying for. You'll share your details, then
           answer 10 skill-based questions with a 45-second timer. Score 7 or
           above and you'll be invited to submit your CV.

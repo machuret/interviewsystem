@@ -28,6 +28,14 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "-apple-system", "sans-serif"],
       },
+      // Fluid type scale — clamp(min, preferred, max)
+      // Viewport range: 375px (mobile) → 1280px (desktop)
+      fontSize: {
+        "fluid-display":  ["clamp(1.75rem, 1.2rem + 2.2vw, 3rem)",      { lineHeight: "1.1",  letterSpacing: "-0.03em"  }],
+        "fluid-heading":  ["clamp(1.375rem, 1rem + 1.56vw, 2.25rem)",   { lineHeight: "1.15", letterSpacing: "-0.025em" }],
+        "fluid-title":    ["clamp(1.125rem, 0.875rem + 1.1vw, 1.75rem)",{ lineHeight: "1.2",  letterSpacing: "-0.02em"  }],
+        "fluid-lead":     ["clamp(1rem, 0.9rem + 0.44vw, 1.25rem)",     { lineHeight: "1.6",  letterSpacing: "0"        }],
+      },
     },
   },
   plugins: [],

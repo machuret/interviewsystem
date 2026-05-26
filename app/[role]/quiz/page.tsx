@@ -9,7 +9,13 @@ type Question = {
   options: string[];
 };
 
-type QuizState = "loading" | "ready" | "question" | "submitting" | "done" | "error";
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+type QuizState = "loading" | "pick-category" | "ready" | "question" | "submitting" | "error";
 
 const TIMER_SECONDS = 45;
 
@@ -17,31 +23,57 @@ export default function QuizPage() {
   const params = useParams<{ role: string }>();
   const router = useRouter();
 
-  const [state, setState]             = useState<QuizState>("loading");
-  const [questions, setQuestions]     = useState<Question[]>([]);
-  const [sessionId, setSessionId]     = useState<string>("");
-  const [roleName, setRoleName]       = useState<string>("");
-  const [current, setCurrent]         = useState(0);
-  const [answers, setAnswers]         = useState<number[]>([]);
-  const [answerTimes, setAnswerTimes] = useState<number[]>([]);
-  const [selected, setSelected]       = useState<number | null>(null);
-  const [timeLeft, setTimeLeft]       = useState(TIMER_SECONDS);
-  const [tabSwitches, setTabSwitches] = useState(0);
-  const [error, setError]             = useState("");
+  const [state, setState]               = useState<QuizState>("loading");
+  const [categories, setCategories]     = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [questions, setQuestions]       = useState<Question[]>([]);
+  const [sessionId, setSessionId]       = useState<string>("");
+  const [roleName, setRoleName]         = useState<string>("");
+  const [current, setCurrent]           = useState(0);
+  const [answers, setAnswers]           = useState<number[]>([]);
+  const [answerTimes, setAnswerTimes]   = useState<number[]>([]);
+  const [selected, setSelected]         = useState<number | null>(null);
+  const [timeLeft, setTimeLeft]         = useState(TIMER_SECONDS);
+  const [error, setError]               = useState("");
 
-  const timerRef          = useRef<ReturnType<typeof setInterval> | null>(null);
-  const tabRef            = useRef(0);
-  const submittingRef     = useRef(false);
-  const questionStartRef  = useRef<number>(0);
+  const timerRef         = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tabRef           = useRef(0);
+  const submittingRef    = useRef(false);
+  const questionStartRef = useRef<number>(0);
 
-  // ── Fetch questions ──────────────────────────────────────────────────────
+  // ── Load categories for this role ────────────────────────────────────────
   useEffect(() => {
-    async function startQuiz() {
+    async function init() {
       try {
+        const res = await fetch(`/api/quiz/categories?role=${params.role}`);
+        const data = await res.json();
+        const cats: Category[] = data.categories ?? [];
+        setCategories(cats);
+        if (cats.length > 0) {
+          setState("pick-category");
+        } else {
+          setState("ready");
+        }
+      } catch {
+        setError("Network error. Please try again.");
+        setState("error");
+      }
+    }
+    init();
+  }, [params.role]);
+
+  // ── Start quiz (after category chosen or no categories) ──────────────────
+  const startQuiz = useCallback(
+    async (category: Category | null) => {
+      setState("loading");
+      try {
+        const body: Record<string, string> = { role_slug: params.role };
+        if (category) body.category_slug = category.slug;
+
         const res = await fetch("/api/quiz/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role_slug: params.role }),
+          body: JSON.stringify(body),
         });
         if (!res.ok) {
           const { error: msg } = await res.json();
@@ -58,9 +90,9 @@ export default function QuizPage() {
         setError("Network error. Please try again.");
         setState("error");
       }
-    }
-    startQuiz();
-  }, [params.role]);
+    },
+    [params.role]
+  );
 
   // ── Submit answers ───────────────────────────────────────────────────────
   const submitQuiz = useCallback(
@@ -136,7 +168,6 @@ export default function QuizPage() {
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
         tabRef.current += 1;
-        setTabSwitches(tabRef.current);
         if (timerRef.current) clearInterval(timerRef.current);
         submitQuiz(answers, answerTimes, true);
       }
@@ -154,13 +185,11 @@ export default function QuizPage() {
     return () => window.removeEventListener("popstate", block);
   }, [state]);
 
-  // ── Start first question ─────────────────────────────────────────────────
   function beginQuiz() {
     setState("question");
     startTimer();
   }
 
-  // ── Answer selection ─────────────────────────────────────────────────────
   function handleSelect(idx: number) {
     if (selected !== null) return;
     if (timerRef.current) clearInterval(timerRef.current);
@@ -168,7 +197,7 @@ export default function QuizPage() {
     setSelected(idx);
 
     const newAnswers = [...answers, idx];
-    const newTimes = [...answerTimes, elapsed];
+    const newTimes   = [...answerTimes, elapsed];
     setAnswers(newAnswers);
     setAnswerTimes(newTimes);
 
@@ -184,13 +213,11 @@ export default function QuizPage() {
     }, 600);
   }
 
-  // ── Prevent cheating ─────────────────────────────────────────────────────
   function blockAction(e: React.SyntheticEvent) {
     e.preventDefault();
   }
 
-  // ── Timer bar colour ─────────────────────────────────────────────────────
-  const timerPct = (timeLeft / TIMER_SECONDS) * 100;
+  const timerPct   = (timeLeft / TIMER_SECONDS) * 100;
   const timerColor = timeLeft <= 10 ? "bg-red-500" : "bg-[#f97316]";
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -198,7 +225,7 @@ export default function QuizPage() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <div className="w-8 h-8 border-2 border-[#f97316] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-[#777]">Loading your quiz...</p>
+        <p className="text-[#777]">Loading...</p>
       </div>
     );
   }
@@ -221,11 +248,41 @@ export default function QuizPage() {
     );
   }
 
+  // Category picker
+  if (state === "pick-category") {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <p className="text-[#f97316] text-sm font-semibold uppercase tracking-widest mb-2">
+          Choose your specialisation
+        </p>
+        <h1 className="text-3xl font-bold text-white mb-3">What is your focus area?</h1>
+        <p className="text-[#a1a1aa] mb-8 text-sm">
+          Your quiz will include 5 core questions + 5 questions specific to your specialisation.
+        </p>
+        <div className="grid gap-3 text-left">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => {
+                setSelectedCategory(cat);
+                startQuiz(cat);
+              }}
+              className="w-full text-left bg-[#141414] border border-[#2a2a2a] hover:border-[#f97316] hover:bg-[#1c1c1c] rounded-xl px-6 py-4 text-white font-medium transition-all duration-150"
+            >
+              <span className="text-[#f97316] font-bold mr-3">→</span>
+              {cat.name}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (state === "ready") {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="text-[#f97316] text-sm font-semibold uppercase tracking-widest mb-2">
-          {roleName}
+          {roleName}{selectedCategory ? ` · ${selectedCategory.name}` : ""}
         </p>
         <h1 className="text-3xl font-bold text-white mb-4">Ready to start?</h1>
         <p className="text-[#a1a1aa] mb-2">
@@ -255,21 +312,15 @@ export default function QuizPage() {
       onCut={blockAction}
       onPaste={blockAction}
     >
-      {/* Question counter */}
       <div className="flex items-center justify-between mb-4">
         <span className="text-[#555] text-sm">
           Question {current + 1} of {questions.length}
         </span>
-        <span
-          className={`text-sm font-bold tabular-nums ${
-            timeLeft <= 10 ? "text-red-400" : "text-[#f97316]"
-          }`}
-        >
+        <span className={`text-sm font-bold tabular-nums ${timeLeft <= 10 ? "text-red-400" : "text-[#f97316]"}`}>
           {timeLeft}s
         </span>
       </div>
 
-      {/* Timer bar */}
       <div className="h-1 w-full bg-[#2a2a2a] rounded-full mb-8 overflow-hidden">
         <div
           className={`h-1 rounded-full transition-all duration-1000 ${timerColor}`}
@@ -277,23 +328,19 @@ export default function QuizPage() {
         />
       </div>
 
-      {/* Question */}
       <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl p-6 mb-6">
         <p className="text-white text-lg font-medium leading-relaxed">{q.question_text}</p>
       </div>
 
-      {/* Options */}
       <div className="grid gap-3">
         {q.options.map((option, idx) => {
           let style =
             "w-full text-left bg-[#141414] border border-[#2a2a2a] rounded-xl px-5 py-4 text-[#e5e5e5] text-sm font-medium transition-all duration-150 cursor-pointer";
 
           if (selected !== null) {
-            if (idx === selected) {
-              style += " border-[#f97316] bg-[#1c1c1c] text-white";
-            } else {
-              style += " opacity-40 cursor-not-allowed";
-            }
+            style += idx === selected
+              ? " border-[#f97316] bg-[#1c1c1c] text-white"
+              : " opacity-40 cursor-not-allowed";
           } else {
             style += " hover:border-[#f97316] hover:bg-[#1c1c1c] hover:text-white";
           }
@@ -305,9 +352,7 @@ export default function QuizPage() {
               onClick={() => handleSelect(idx)}
               disabled={selected !== null}
             >
-              <span className="text-[#f97316] font-bold mr-3">
-                {String.fromCharCode(65 + idx)}.
-              </span>
+              <span className="text-[#f97316] font-bold mr-3">{String.fromCharCode(65 + idx)}.</span>
               {option}
             </button>
           );

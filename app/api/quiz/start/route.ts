@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase-server";
 
 const DEDUP_DAYS = 30;
+const BASE_COUNT = 5;
+const CATEGORY_COUNT = 5;
 
 function getClientIp(req: NextRequest): string | null {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -19,8 +21,12 @@ function shuffleOptions(options: string[]): { shuffled: string[]; permutation: n
   return { shuffled, permutation };
 }
 
+function pickRandom<T>(arr: T[], n: number): T[] {
+  return arr.sort(() => Math.random() - 0.5).slice(0, n);
+}
+
 export async function POST(req: NextRequest) {
-  const { role_slug } = await req.json();
+  const { role_slug, category_slug } = await req.json();
   if (!role_slug) return NextResponse.json({ error: "role_slug required" }, { status: 400 });
 
   const db = createServiceClient();
@@ -58,24 +64,75 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Role not found" }, { status: 404 });
   }
 
-  // Fetch all active questions for the role
-  const { data: allQuestions, error: qErr } = await db
-    .from("apply_questions")
-    .select("id, question_text, options")
-    .eq("role_id", role.id)
-    .eq("active", true);
+  let selectedQuestions: { id: string; question_text: string; options: string[] }[];
 
-  if (qErr || !allQuestions || allQuestions.length < 10) {
-    return NextResponse.json({ error: "Not enough questions for this role" }, { status: 500 });
+  if (category_slug) {
+    // Fetch the category
+    const { data: category } = await db
+      .from("apply_categories")
+      .select("id, name")
+      .eq("role_id", role.id)
+      .eq("slug", category_slug)
+      .eq("active", true)
+      .single();
+
+    if (!category) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
+
+    // Fetch base questions (category_id IS NULL) and category-specific questions in parallel
+    const [baseRes, catRes] = await Promise.all([
+      db.from("apply_questions")
+        .select("id, question_text, options")
+        .eq("role_id", role.id)
+        .is("category_id", null)
+        .eq("active", true),
+      db.from("apply_questions")
+        .select("id, question_text, options")
+        .eq("category_id", category.id)
+        .eq("active", true),
+    ]);
+
+    const baseQuestions = baseRes.data ?? [];
+    const catQuestions  = catRes.data ?? [];
+
+    if (baseQuestions.length < BASE_COUNT) {
+      return NextResponse.json(
+        { error: `Not enough base questions (need ${BASE_COUNT}, have ${baseQuestions.length})` },
+        { status: 500 }
+      );
+    }
+    if (catQuestions.length < CATEGORY_COUNT) {
+      return NextResponse.json(
+        { error: `Not enough questions for this specialisation (need ${CATEGORY_COUNT}, have ${catQuestions.length})` },
+        { status: 500 }
+      );
+    }
+
+    selectedQuestions = [
+      ...pickRandom(baseQuestions, BASE_COUNT),
+      ...pickRandom(catQuestions, CATEGORY_COUNT),
+    ].sort(() => Math.random() - 0.5); // interleave
+  } else {
+    // No categories — fall back to 10 random from all role questions
+    const { data: allQuestions, error: qErr } = await db
+      .from("apply_questions")
+      .select("id, question_text, options")
+      .eq("role_id", role.id)
+      .eq("active", true);
+
+    if (qErr || !allQuestions || allQuestions.length < 10) {
+      return NextResponse.json({ error: "Not enough questions for this role" }, { status: 500 });
+    }
+
+    selectedQuestions = pickRandom(allQuestions, 10);
   }
 
-  // Shuffle and pick 10
-  const shuffled = allQuestions.sort(() => Math.random() - 0.5).slice(0, 10);
-  const questionIds = shuffled.map((q) => q.id);
+  const questionIds = selectedQuestions.map((q) => q.id);
 
-  // Shuffle options per question, store permutations (server knows originals, client only sees display order)
+  // Shuffle options per question, store permutations
   const optionOrders: number[][] = [];
-  const questionsForClient = shuffled.map((q) => {
+  const questionsForClient = selectedQuestions.map((q) => {
     const { shuffled: shuffledOpts, permutation } = shuffleOptions(q.options as string[]);
     optionOrders.push(permutation);
     return { id: q.id, question_text: q.question_text, options: shuffledOpts };

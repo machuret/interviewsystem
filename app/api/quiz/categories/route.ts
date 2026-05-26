@@ -6,7 +6,6 @@ export async function GET(req: NextRequest) {
   if (!role) return NextResponse.json({ error: "role required" }, { status: 400 });
 
   const db = createServiceClient();
-
   const { data, error } = await db
     .from("apply_categories")
     .select("id, name, slug, apply_roles!inner(slug)")
@@ -15,5 +14,9 @@ export async function GET(req: NextRequest) {
     .order("name", { ascending: true });
 
   if (error) return NextResponse.json({ categories: [] });
-  return NextResponse.json({ categories: data ?? [] });
+
+  return NextResponse.json(
+    { categories: data ?? [] },
+    { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
+  );
 }

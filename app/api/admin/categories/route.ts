@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase-server";
-
-function checkAuth(req: NextRequest) {
-  return req.cookies.get("admin_auth")?.value === process.env.ADMIN_PASSWORD;
-}
+import { requireAdmin } from "@/lib/admin-auth";
 
 export async function GET(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const unauth = requireAdmin(req);
+  if (unauth) return unauth;
 
   const role_id = req.nextUrl.searchParams.get("role_id");
   const db = createServiceClient();
@@ -24,7 +22,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const unauth = requireAdmin(req);
+  if (unauth) return unauth;
 
   const { role_id, name } = await req.json();
   if (!role_id || !name?.trim()) {

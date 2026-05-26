@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase-server";
-
-function checkAuth(req: NextRequest) {
-  return req.cookies.get("admin_auth")?.value === process.env.ADMIN_PASSWORD;
-}
+import { requireAdmin } from "@/lib/admin-auth";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  if (!checkAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const unauth = requireAdmin(req);
+  if (unauth) return unauth;
 
   const db = createServiceClient();
   const { data, error } = await db
@@ -20,7 +18,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  if (!checkAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const unauth = requireAdmin(req);
+  if (unauth) return unauth;
 
   const { note } = await req.json();
   if (!note?.trim()) return NextResponse.json({ error: "Note cannot be empty" }, { status: 400 });

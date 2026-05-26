@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase-server";
-
-function checkAuth(req: NextRequest) {
-  return req.cookies.get("admin_auth")?.value === process.env.ADMIN_PASSWORD;
-}
+import { requireAdmin } from "@/lib/admin-auth";
 
 export async function GET(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const unauth = requireAdmin(req);
+  if (unauth) return unauth;
 
   const { searchParams } = req.nextUrl;
   const role_id     = searchParams.get("role_id");
@@ -19,7 +17,7 @@ export async function GET(req: NextRequest) {
     .select("id, role_id, category_id, question_text, options, correct_answer_index, active, created_at, apply_roles(name, slug), apply_categories(name, slug)")
     .order("created_at", { ascending: false });
 
-  if (role_id)     query = query.eq("role_id", role_id);
+  if (role_id) query = query.eq("role_id", role_id);
   if (category_id === "base") {
     query = query.is("category_id", null);
   } else if (category_id) {
@@ -32,7 +30,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const unauth = requireAdmin(req);
+  if (unauth) return unauth;
 
   const { role_id, category_id, question_text, options, correct_answer_index } = await req.json();
 
@@ -46,13 +45,7 @@ export async function POST(req: NextRequest) {
   const db = createServiceClient();
   const { data, error } = await db
     .from("apply_questions")
-    .insert({
-      role_id,
-      category_id: category_id || null,
-      question_text: question_text.trim(),
-      options,
-      correct_answer_index,
-    })
+    .insert({ role_id, category_id: category_id || null, question_text: question_text.trim(), options, correct_answer_index })
     .select()
     .single();
 

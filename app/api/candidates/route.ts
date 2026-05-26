@@ -109,11 +109,11 @@ export async function POST(req: NextRequest) {
     if (cv_file.size > MAX_CV_BYTES) {
       return NextResponse.json({ error: "CV file must be under 10 MB" }, { status: 400 });
     }
-    const bytes    = await cv_file.arrayBuffer();
+    // Pass File (Blob) directly — no arrayBuffer() to avoid loading entire file into heap
     const filename = `${session_id}/${Date.now()}.pdf`;
     const { error: uploadErr } = await db.storage
       .from("apply-cvs")
-      .upload(filename, bytes, { contentType: "application/pdf", upsert: false });
+      .upload(filename, cv_file, { contentType: "application/pdf", upsert: false });
     if (uploadErr) {
       return NextResponse.json({ error: "CV upload failed: " + uploadErr.message }, { status: 500 });
     }

@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase-server";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
-const DEDUP_DAYS = 30;
-const BASE_COUNT = 5;
+const DEDUP_DAYS    = 30;
+const BASE_COUNT    = 5;
 const CATEGORY_COUNT = 5;
 
-function getClientIp(req: NextRequest): string | null {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? null;
+// Unbiased Fisher-Yates shuffle that does NOT mutate the input array
+function pickRandom<T>(arr: T[], n: number): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, n);
 }
 
 function shuffleOptions(options: string[]): { shuffled: string[]; permutation: number[] } {
@@ -17,23 +22,24 @@ function shuffleOptions(options: string[]): { shuffled: string[]; permutation: n
     const j = Math.floor(Math.random() * (i + 1));
     [permutation[i], permutation[j]] = [permutation[j], permutation[i]];
   }
-  const shuffled = permutation.map((orig) => options[orig]);
-  return { shuffled, permutation };
-}
-
-function pickRandom<T>(arr: T[], n: number): T[] {
-  return arr.sort(() => Math.random() - 0.5).slice(0, n);
+  return { shuffled: permutation.map((orig) => options[orig]), permutation };
 }
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+
+  // 10 quiz-start attempts per IP per minute
+  if (!checkRateLimit(`quiz-start:${ip}`, 10, 60_000)) {
+    return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
+  }
+
   const { role_slug, category_slug, applicant_id } = await req.json();
   if (!role_slug) return NextResponse.json({ error: "role_slug required" }, { status: 400 });
 
   const db = createServiceClient();
-  const ip = getClientIp(req);
 
-  // IP-based 30-day deduplication block
-  if (ip) {
+  // IP-based 30-day dedup (passed sessions only)
+  if (ip && ip !== "unknown") {
     const since = new Date(Date.now() - DEDUP_DAYS * 24 * 60 * 60 * 1000).toISOString();
     const { data: prior } = await db
       .from("apply_quiz_sessions")
@@ -52,7 +58,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Fetch role
   const { data: role, error: roleErr } = await db
     .from("apply_roles")
     .select("id, name, slug")
@@ -67,7 +72,6 @@ export async function POST(req: NextRequest) {
   let selectedQuestions: { id: string; question_text: string; options: string[] }[];
 
   if (category_slug) {
-    // Fetch the category
     const { data: category } = await db
       .from("apply_categories")
       .select("id, name")
@@ -80,7 +84,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Category not found" }, { status: 404 });
     }
 
-    // Fetch base questions (category_id IS NULL) and category-specific questions in parallel
     const [baseRes, catRes] = await Promise.all([
       db.from("apply_questions")
         .select("id, question_text, options")
@@ -112,9 +115,13 @@ export async function POST(req: NextRequest) {
     selectedQuestions = [
       ...pickRandom(baseQuestions, BASE_COUNT),
       ...pickRandom(catQuestions, CATEGORY_COUNT),
-    ].sort(() => Math.random() - 0.5); // interleave
+    ];
+    // Interleave with unbiased shuffle
+    for (let i = selectedQuestions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [selectedQuestions[i], selectedQuestions[j]] = [selectedQuestions[j], selectedQuestions[i]];
+    }
   } else {
-    // No categories — fall back to 10 random from all role questions
     const { data: allQuestions, error: qErr } = await db
       .from("apply_questions")
       .select("id, question_text, options")
@@ -129,16 +136,13 @@ export async function POST(req: NextRequest) {
   }
 
   const questionIds = selectedQuestions.map((q) => q.id);
-
-  // Shuffle options per question, store permutations
   const optionOrders: number[][] = [];
   const questionsForClient = selectedQuestions.map((q) => {
-    const { shuffled: shuffledOpts, permutation } = shuffleOptions(q.options as string[]);
+    const { shuffled, permutation } = shuffleOptions(q.options as string[]);
     optionOrders.push(permutation);
-    return { id: q.id, question_text: q.question_text, options: shuffledOpts };
+    return { id: q.id, question_text: q.question_text, options: shuffled };
   });
 
-  // Create session
   const { data: session, error: sessErr } = await db
     .from("apply_quiz_sessions")
     .insert({

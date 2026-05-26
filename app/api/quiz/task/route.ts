@@ -6,7 +6,6 @@ export async function GET(req: NextRequest) {
   if (!role) return NextResponse.json({ error: "role required" }, { status: 400 });
 
   const db = createServiceClient();
-
   const { data, error } = await db
     .from("apply_practical_tasks")
     .select("prompt, apply_roles!inner(slug)")
@@ -19,5 +18,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ prompt: null });
   }
 
-  return NextResponse.json({ prompt: data.prompt });
+  return NextResponse.json(
+    { prompt: data.prompt },
+    { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
+  );
 }

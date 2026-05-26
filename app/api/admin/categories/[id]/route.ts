@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase-server";
-
-function checkAuth(req: NextRequest) {
-  return req.cookies.get("admin_auth")?.value === process.env.ADMIN_PASSWORD;
-}
+import { requireAdmin } from "@/lib/admin-auth";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  if (!checkAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const unauth = requireAdmin(req);
+  if (unauth) return unauth;
 
   const body = await req.json();
   const updates: Record<string, unknown> = {};
@@ -30,12 +28,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  if (!checkAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const unauth = requireAdmin(req);
+  if (unauth) return unauth;
 
   const db = createServiceClient();
-  // Nullify category_id on questions first (cascade would delete questions — we don't want that)
   await db.from("apply_questions").update({ category_id: null }).eq("category_id", params.id);
-
   const { error } = await db.from("apply_categories").delete().eq("id", params.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });

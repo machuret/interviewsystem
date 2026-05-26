@@ -1,31 +1,5 @@
 import Link from "next/link";
-
-const ROLES = [
-  {
-    slug: "marketing",
-    name: "Marketing Specialist",
-    description: "Content, SEO, social media, email & digital campaigns",
-    icon: "📣",
-  },
-  {
-    slug: "sales",
-    name: "Sales Representative",
-    description: "Lead generation, outreach, closing & CRM management",
-    icon: "🤝",
-  },
-  {
-    slug: "virtual-assistant",
-    name: "Virtual Assistant",
-    description: "Admin support, scheduling, email & data entry",
-    icon: "💻",
-  },
-  {
-    slug: "executive-assistant",
-    name: "Executive Assistant",
-    description: "C-suite support, complex scheduling, travel & discretion",
-    icon: "🎯",
-  },
-];
+import { ROLES } from "@/lib/roles";
 
 export default function HomePage() {
   return (

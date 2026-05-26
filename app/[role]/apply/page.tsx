@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const ROLE_NAMES: Record<string, string> = {
   "marketing":           "Marketing Specialist",
@@ -37,8 +37,35 @@ export default function ApplyPage() {
   const [applicantId, setApplicantId] = useState<string | null>(null);
   const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState("");
+  const [internetMbps, setInternetMbps] = useState<number | null>(null);
+  const [speedTesting, setSpeedTesting] = useState(false);
+  const speedDoneRef = useRef(false);
 
   const roleName = ROLE_NAMES[params.role] ?? params.role;
+
+  // Run internet speed test when entering step 2
+  useEffect(() => {
+    if (step !== 2 || speedDoneRef.current) return;
+    speedDoneRef.current = true;
+    setSpeedTesting(true);
+    const start = Date.now();
+    fetch("/api/speed-test")
+      .then((r) => r.arrayBuffer())
+      .then((buf) => {
+        const elapsed = (Date.now() - start) / 1000;
+        const mbps = Math.round(((buf.byteLength * 8) / elapsed / 1_000_000) * 10) / 10;
+        setInternetMbps(mbps);
+        if (applicantId) {
+          fetch(`/api/applicants/${applicantId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ internet_mbps: mbps }),
+          }).catch(() => {});
+        }
+      })
+      .catch(() => {})
+      .finally(() => setSpeedTesting(false));
+  }, [step, applicantId]);
 
   function update(field: keyof Form, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -97,9 +124,9 @@ export default function ApplyPage() {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      // All steps done — go to quiz
+      // All steps done — go to typing test, then quiz
       const aid = applicantId;
-      router.push(`/${params.role}/quiz${aid ? `?aid=${aid}` : ""}`);
+      router.push(`/${params.role}/typing-test${aid ? `?aid=${aid}` : ""}`);
     }
   }
 
@@ -218,8 +245,23 @@ export default function ApplyPage() {
             <input type="text" placeholder="PLDT, Globe, Converge..." value={form.internet_provider} onChange={(e) => update("internet_provider", e.target.value)} />
           </F>
 
-          <div className="bg-[#1c1c1c] border border-[#2a2a2a] rounded-xl p-4 text-sm text-[#777] mt-2">
-            We work with Australian businesses, so a stable internet connection is important for remote roles.
+          <div className="bg-[#1c1c1c] border border-[#2a2a2a] rounded-xl p-4 text-sm mt-2">
+            <p className="text-[#777] mb-2">We work with Australian businesses, so a stable internet connection is important for remote roles.</p>
+            {speedTesting && (
+              <div className="flex items-center gap-2 text-[#a1a1aa]">
+                <div className="w-3 h-3 border border-[#f97316] border-t-transparent rounded-full animate-spin" />
+                Testing your connection speed...
+              </div>
+            )}
+            {!speedTesting && internetMbps !== null && (
+              <div className="flex items-center gap-2">
+                <span className={`font-bold ${internetMbps >= 10 ? "text-green-400" : internetMbps >= 5 ? "text-yellow-400" : "text-red-400"}`}>
+                  {internetMbps} Mbps
+                </span>
+                <span className="text-[#555]">download speed detected</span>
+                {internetMbps < 5 && <span className="text-red-400 text-xs">(may affect remote work)</span>}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -276,7 +318,7 @@ export default function ApplyPage() {
           disabled={saving}
           className="flex-1 bg-[#f97316] hover:bg-[#ea580c] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors"
         >
-          {saving ? "Saving..." : step === 3 ? "Save & Start Quiz →" : "Save & Continue →"}
+          {saving ? "Saving..." : step === 3 ? "Save & Continue →" : "Save & Continue →"}
         </button>
       </div>
 

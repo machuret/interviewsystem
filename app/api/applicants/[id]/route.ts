@@ -4,7 +4,7 @@ import { createServiceClient } from "@/lib/supabase-server";
 function buildFields(body: Record<string, unknown>) {
   const str = (k: string) => (typeof body[k] === "string" && body[k] ? (body[k] as string).trim() : null);
   const bool = (k: string) => (body[k] === "yes" ? true : body[k] === "no" ? false : null);
-  const num = (k: string) => (body[k] ? parseInt(body[k] as string, 10) || null : null);
+  const num = (k: string) => (body[k] != null ? parseFloat(body[k] as string) || null : null);
 
   return {
     first_name:        str("first_name"),
@@ -27,6 +27,10 @@ function buildFields(body: Record<string, unknown>) {
     skills_tools:       str("skills_tools"),
     software_used:      str("software_used"),
     task_description:   str("task_description"),
+    // Assessment fields
+    typing_wpm:       num("typing_wpm"),
+    typing_accuracy:  num("typing_accuracy"),
+    internet_mbps:    num("internet_mbps"),
   };
 }
 

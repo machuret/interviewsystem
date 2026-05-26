@@ -18,13 +18,20 @@ export async function GET(req: NextRequest) {
   let query = db
     .from("apply_candidates")
     .select(`
-      id, full_name, email, phone, location,
+      id, full_name, last_name, email, phone, location,
+      age, sex, married, kids,
+      device_type, device_brand, internet_provider,
+      facebook_link, instagram_link,
+      current_job_title, years_experience,
+      previous_employers, skills_tools, software_used, task_description,
       salary_expectation_php, payment_methods,
       paypal_email, wise_email,
       cv_url, cv_type, differentiator,
+      video_intro_url, practical_response, writing_sample,
       submitted_at, status,
       apply_quiz_sessions (
         id, score, passed, started_at,
+        tab_switches, suspicious_answer_count,
         apply_roles ( name, slug )
       )
     `)

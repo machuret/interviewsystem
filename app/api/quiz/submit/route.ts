@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
 
   let score = 0;
   let passed = false;
+  let correctFlags: boolean[] | null = null;
 
   if (!autoFail) {
     const questionIds: string[] = session.question_ids;
@@ -62,9 +63,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch questions" }, { status: 500 });
     }
 
+    correctFlags = [];
     for (let i = 0; i < questionIds.length; i++) {
       const q = questions.find((x) => x.id === questionIds[i]);
-      if (!q) continue;
+      if (!q) { correctFlags.push(false); continue; }
 
       const clientAnswer: number = answers[i];
       const permutation = optionOrders[i];
@@ -75,7 +77,9 @@ export async function POST(req: NextRequest) {
           ? permutation[clientAnswer]
           : clientAnswer;
 
-      if (originalAnswer === q.correct_answer_index) score++;
+      const isCorrect = originalAnswer === q.correct_answer_index;
+      correctFlags.push(isCorrect);
+      if (isCorrect) score++;
     }
 
     passed = score >= 7;
@@ -90,6 +94,7 @@ export async function POST(req: NextRequest) {
       tab_switches,
       answer_times: answer_times.length > 0 ? answer_times : null,
       suspicious_answer_count: suspiciousAnswerCount,
+      correct_flags: correctFlags,
     })
     .eq("id", session_id);
 

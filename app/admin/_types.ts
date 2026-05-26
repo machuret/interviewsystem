@@ -32,6 +32,8 @@ export type Candidate = {
   writing_sample: string | null;
   submitted_at: string;
   status: string;
+  starred: boolean;
+  rejection_reason: string | null;
   apply_quiz_sessions: {
     id: string;
     score: number;
@@ -100,6 +102,16 @@ export type AnalyticsQuestion = {
 
 export const STATUSES = ["new", "shortlisted", "interviewed", "rejected"] as const;
 export type Status = typeof STATUSES[number];
+
+export const REJECTION_REASONS = [
+  "Underqualified",
+  "Salary too high",
+  "Poor quiz score",
+  "No-show / unresponsive",
+  "Role filled",
+  "Other",
+] as const;
+export type RejectionReason = typeof REJECTION_REASONS[number];
 
 export const STATUS_COLORS: Record<string, string> = {
   new:         "bg-blue-900/40 text-blue-300 border border-blue-700/40",

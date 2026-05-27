@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase-server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { sendShortlistEmail, sendRejectionEmail } from "@/lib/email";
 
 const VALID_STATUSES = ["new", "shortlisted", "interviewed", "rejected"];
 
@@ -36,5 +37,25 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .eq("id", params.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Send status-transition emails (fire-and-forget)
+  if (body.status === "shortlisted" || body.status === "rejected") {
+    const { data: c } = await db
+      .from("apply_candidates")
+      .select("email, full_name, apply_quiz_sessions( apply_roles( name ) )")
+      .eq("id", params.id)
+      .single();
+    if (c?.email) {
+      const firstName = (c.full_name ?? "there").split(" ")[0];
+      const roleName =
+        (c as any).apply_quiz_sessions?.apply_roles?.name ?? "the role";
+      if (body.status === "shortlisted") {
+        sendShortlistEmail(c.email, firstName, roleName).catch(() => {});
+      } else {
+        sendRejectionEmail(c.email, firstName, roleName, body.rejection_reason ?? null).catch(() => {});
+      }
+    }
+  }
+
   return NextResponse.json({ success: true });
 }

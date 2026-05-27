@@ -34,6 +34,7 @@ export type Candidate = {
   status: string;
   starred: boolean;
   rejection_reason: string | null;
+  interview_date?: string | null;
   apply_quiz_sessions: {
     id: string;
     score: number;

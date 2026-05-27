@@ -20,6 +20,7 @@ function TypingTestInner() {
   const [wpm, setWpm]           = useState(0);
   const [accuracy, setAccuracy] = useState(0);
   const [saving, setSaving]     = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startRef = useRef<number>(0);
@@ -44,7 +45,10 @@ function TypingTestInner() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ typing_wpm: calcWpm, typing_accuracy: calcAcc }),
-      }).catch(() => {}).finally(() => setSaving(false));
+      })
+        .then((r) => { if (!r.ok) setSaveError(true); })
+        .catch(() => setSaveError(true))
+        .finally(() => setSaving(false));
     }
   }, [applicantId]);
 
@@ -133,8 +137,13 @@ function TypingTestInner() {
             <p className="text-brand-text-secondary text-sm">Accuracy</p>
           </div>
         </div>
-        {saving && <p className="text-brand-text-muted text-sm mb-4">Saving results...</p>}
-        <button onClick={proceed} disabled={saving} className="btn-primary px-10 py-4 text-lg">
+        {saving && <p className="text-brand-text-muted text-sm mb-4">Saving results…</p>}
+        {saveError && (
+          <p className="text-yellow-400 text-sm mb-4">
+            ⚠ Results couldn't be saved, but you can still continue.
+          </p>
+        )}
+        <button onClick={proceed} className="btn-primary px-10 py-4 text-lg">
           Continue to Quiz →
         </button>
       </div>

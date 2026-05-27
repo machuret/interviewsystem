@@ -201,6 +201,26 @@ export default function CandidatesTab() {
     window.open(`/api/admin/export?${params}`, "_blank");
   }
 
+  async function exportCvs() {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    const res = await fetch(`/api/admin/candidates/bulk?ids=${ids.join(",")}`);
+    if (!res.ok) return;
+    const { candidates } = await res.json();
+    if (!candidates?.length) return;
+    const lines: string[] = candidates.map((c: { name: string; email: string; role: string; cv_url: string }) =>
+      `${c.name} | ${c.email} | ${c.role} | ${c.cv_url}`
+    );
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      alert(`CV links for ${candidates.length} candidate(s) copied to clipboard.`);
+    } catch {
+      // Fallback: open in new tab as text
+      const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+      window.open(URL.createObjectURL(blob), "_blank");
+    }
+  }
+
   function clearFilters() {
     setFilterRole("");
     setFilterStatus("");
@@ -385,6 +405,7 @@ export default function CandidatesTab() {
         onShortlist={() => performBulkUpdate("shortlisted")}
         onInterview={() => performBulkUpdate("interviewed")}
         onReject={handleBulkReject}
+        onExportCvs={exportCvs}
         onClear={() => setSelectedIds(new Set())}
       />
 

@@ -110,7 +110,9 @@ function QuizInner() {
         if (data.passed) router.push(passUrl);
         else router.push(`/${params.role}/fail`);
       } catch {
-        router.push(`/${params.role}/fail`);
+        submittingRef.current = false;
+        setState("error");
+        setError("Network error — please check your connection and try again.");
       }
     },
     [sessionId, params.role, applicantId, router]
@@ -200,7 +202,23 @@ function QuizInner() {
   if (state === "error") return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
       <p className="text-red-400 mb-4">{error}</p>
-      <a href="/" className="text-brand-orange underline">← Back to roles</a>
+      {answers.length > 0 && (
+        <button
+          onClick={() => {
+            setError("");
+            setState("question");
+            submittingRef.current = false;
+            // Re-submit with current answers
+            submitQuiz(answers, answerTimes);
+          }}
+          className="btn-primary px-8 py-3 mt-4"
+        >
+          Retry submission →
+        </button>
+      )}
+      <div className="mt-4">
+        <a href="/" className="text-brand-orange underline">← Back to roles</a>
+      </div>
     </div>
   );
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase-server";
+import { sendCandidateConfirmation, sendAdminNewApplication } from "@/lib/email";
 
 const GDOC_PATTERN = /^https:\/\/docs\.google\.com\/(document|file)\//;
 const MAX_CV_BYTES = 10 * 1024 * 1024;
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
   // Verify passing session
   const { data: session, error: sessErr } = await db
     .from("apply_quiz_sessions")
-    .select("id, passed")
+    .select("id, passed, score")
     .eq("id", session_id)
     .single();
 
@@ -172,6 +173,19 @@ export async function POST(req: NextRequest) {
       .from("apply_quiz_sessions")
       .update({ candidate_email: email })
       .eq("id", session_id);
+  }
+
+  // Fire-and-forget transactional emails
+  const roleName =
+    (applicant.role_slug as string)
+      ?.replace(/-/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase()) ?? "the role";
+  if (email) {
+    const firstName = (applicant.first_name as string) ?? "there";
+    Promise.all([
+      sendCandidateConfirmation(email, firstName, roleName),
+      sendAdminNewApplication(full_name, roleName, email, session?.score ?? null),
+    ]).catch(() => {});
   }
 
   return NextResponse.json({ success: true });

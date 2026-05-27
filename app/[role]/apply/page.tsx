@@ -163,6 +163,7 @@ function ApplyInner() {
   const [error, setError]             = useState("");
   const [internetMbps, setInternetMbps] = useState<number | null>(null);
   const [speedTesting, setSpeedTesting] = useState(false);
+  const [speedError, setSpeedError]     = useState(false);
   const [jobDetails, setJobDetails]   = useState<JobDetails | null>(null);
 
   // Big No screening state (null = not started yet)
@@ -201,7 +202,7 @@ function ApplyInner() {
           }).catch(() => {});
         }
       })
-      .catch(() => {})
+      .catch(() => { setSpeedError(true); })
       .finally(() => setSpeedTesting(false));
   }, [step, applicantId, bigNoStage]);
 
@@ -488,6 +489,9 @@ function ApplyInner() {
                 <span className="text-brand-text-muted">download speed detected</span>
                 {internetMbps < 5 && <span className="text-red-400 text-xs">(may affect remote work)</span>}
               </div>
+            )}
+            {speedError && (
+              <p className="text-yellow-400 text-xs mt-1">Speed test failed — skipping, won't affect your application.</p>
             )}
           </div>
         </div>

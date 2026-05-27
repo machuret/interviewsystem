@@ -38,6 +38,36 @@ function makeTemplates(c: Candidate) {
   ];
 }
 
+function CvButton({ candidateId, cvType }: { candidateId: string; cvType: "pdf" | "gdoc" }) {
+  const [loading, setLoading] = useState(false);
+
+  async function openCv() {
+    setLoading(true);
+    try {
+      const res  = await fetch(`/api/admin/candidates/${candidateId}/cv-url`);
+      const data = await res.json();
+      if (data.url) window.open(data.url, "_blank", "noopener,noreferrer");
+    } catch {
+      // fallback — nothing
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div>
+      <p className="text-brand-text-muted text-xs uppercase tracking-wide mb-2">CV</p>
+      <button
+        onClick={openCv}
+        disabled={loading}
+        className="inline-flex items-center gap-2 card-inner hover:border-brand-orange px-4 py-2 rounded-lg text-sm text-brand-orange transition-colors duration-150 disabled:opacity-60"
+      >
+        {loading ? "Opening…" : cvType === "pdf" ? "📄 View PDF" : "📝 Open Google Doc"}
+      </button>
+    </div>
+  );
+}
+
 export default function CandidateDetail({
   c, notes, notesLoaded, updatingId, updateStatus, onAddNote,
 }: Props) {
@@ -146,13 +176,7 @@ export default function CandidateDetail({
             </div>
           )}
 
-          <div>
-            <p className="text-brand-text-muted text-xs uppercase tracking-wide mb-2">CV</p>
-            <a href={c.cv_url} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 card-inner hover:border-brand-orange px-4 py-2 rounded-lg text-sm text-brand-orange transition-colors duration-150">
-              {c.cv_type === "pdf" ? "📄 View PDF" : "📝 Open Google Doc"}
-            </a>
-          </div>
+          <CvButton candidateId={c.id} cvType={c.cv_type} />
 
           {isSuspicious && (
             <div className="bg-yellow-900/20 border border-yellow-700/40 rounded-xl p-3 text-xs text-yellow-400">
@@ -187,6 +211,16 @@ export default function CandidateDetail({
                 </option>
               ))}
             </select>
+            {c.status === "interviewed" && (
+              <div className="mt-2">
+                <p className="text-brand-text-muted text-xs uppercase tracking-wide mb-1">Interview date</p>
+                <p className="text-brand-text-secondary text-sm">
+                  {c.interview_date
+                    ? new Date(c.interview_date).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
+                    : <span className="text-brand-text-muted italic">Not recorded</span>}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

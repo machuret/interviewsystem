@@ -43,8 +43,8 @@ const BIG_NO_QUESTIONS: BigNoQuestion[] = [
     question: "Do you have your own laptop or computer for work?",
     options: [
       { label: "Yes, I own it",         value: "own" },
-      { label: "I share a laptop",      value: "shared" },
-      { label: "No, I don't have one",  value: "no", disqualifies: true },
+      { label: "I share a laptop",      value: "shared", disqualifies: true },
+      { label: "No, I don't have one",  value: "no",     disqualifies: true },
     ],
   },
   {

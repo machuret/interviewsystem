@@ -10,6 +10,114 @@ const ROLE_NAMES: Record<string, string> = {
   "executive-assistant": "Executive Assistant",
 };
 
+// ─── Big No screening ────────────────────────────────────────────────────────
+
+type BigNoStage =
+  | "q1"   // Philippines?
+  | "q2"   // Own laptop?
+  | "q3"   // Employed last 6 months?
+  | "q3b"  // Why not employed? (shown only when q3 = no)
+  | "q4"   // Single parent?
+  | "q4b"  // Kids under 4? (shown only when q4 = yes)
+  | "q5"   // Full-time 40 hrs/wk?
+  | "q6";  // Work references?
+
+interface BigNoQuestion {
+  stage: BigNoStage;
+  question: string;
+  options: { label: string; value: string; disqualifies?: boolean }[];
+  subtext?: string;
+}
+
+const BIG_NO_QUESTIONS: BigNoQuestion[] = [
+  {
+    stage: "q1",
+    question: "Are you currently based in the Philippines?",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No",  value: "no", disqualifies: true },
+    ],
+  },
+  {
+    stage: "q2",
+    question: "Do you have your own laptop or computer for work?",
+    options: [
+      { label: "Yes, I own it",         value: "own" },
+      { label: "I share a laptop",      value: "shared" },
+      { label: "No, I don't have one",  value: "no", disqualifies: true },
+    ],
+  },
+  {
+    stage: "q3",
+    question: "Were you employed or actively working in the last 6 months?",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No",  value: "no" },  // triggers q3b, not direct disqualify
+    ],
+  },
+  {
+    stage: "q3b",
+    question: "Could you tell us a bit more about why?",
+    subtext: "We ask this to better understand your situation.",
+    options: [
+      { label: "I was dealing with a health issue",  value: "sick",       disqualifies: true },
+      { label: "Family responsibilities",            value: "family",     disqualifies: true },
+      { label: "I was looking but couldn't find one",value: "job_search", disqualifies: true },
+    ],
+  },
+  {
+    stage: "q4",
+    question: "Are you a single parent?",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No",  value: "no" },  // no reaction either way
+    ],
+  },
+  {
+    stage: "q4b",
+    question: "Are any of your children under 4 years old?",
+    subtext: "This role requires consistent availability during Australian business hours.",
+    options: [
+      { label: "Yes", value: "yes", disqualifies: true },
+      { label: "No",  value: "no" },
+    ],
+  },
+  {
+    stage: "q5",
+    question: "Are you looking for full-time work (40 hours per week)?",
+    options: [
+      { label: "Yes, full-time",         value: "fulltime" },
+      { label: "No, part-time only",     value: "parttime", disqualifies: true },
+    ],
+  },
+  {
+    stage: "q6",
+    question: "Do you have work references we can contact to verify your experience?",
+    subtext: "We may reach out to past employers or clients.",
+    options: [
+      { label: "Yes, I have references",       value: "yes" },
+      { label: "No, I don't have references",  value: "no", disqualifies: true },
+    ],
+  },
+];
+
+// Determine the next stage after a given answer
+function nextStage(stage: BigNoStage, value: string): BigNoStage | "pass" {
+  if (stage === "q3" && value === "no") return "q3b";
+  if (stage === "q4" && value === "yes") return "q4b";
+  const order: BigNoStage[] = ["q1", "q2", "q3", "q3b", "q4", "q4b", "q5", "q6"];
+  const idx = order.indexOf(stage);
+  const nextIdx = order.indexOf(
+    stage === "q3" ? "q4"  // skip q3b when q3 = yes
+    : stage === "q4" ? "q5" // skip q4b when q4 = no
+    : order[idx + 1] as BigNoStage
+  );
+  if (nextIdx === -1 || nextIdx >= order.length) return "pass";
+  return order[nextIdx] ?? "pass";
+}
+
+// ─── Main form types ─────────────────────────────────────────────────────────
+
 type Form = {
   first_name: string; last_name: string; email: string;
   facebook_link: string; instagram_link: string; phone: string;
@@ -38,6 +146,8 @@ const EMPTY_FORM: Form = {
   skills_tools: "", software_used: "", task_description: "",
 };
 
+// ─── Component ───────────────────────────────────────────────────────────────
+
 function ApplyInner() {
   const params       = useParams<{ role: string }>();
   const searchParams = useSearchParams();
@@ -45,6 +155,7 @@ function ApplyInner() {
 
   const jobId = searchParams.get("job") ?? null;
 
+  // Main form state
   const [step, setStep]               = useState(1);
   const [form, setForm]               = useState<Form>(EMPTY_FORM);
   const [applicantId, setApplicantId] = useState<string | null>(null);
@@ -53,9 +164,12 @@ function ApplyInner() {
   const [internetMbps, setInternetMbps] = useState<number | null>(null);
   const [speedTesting, setSpeedTesting] = useState(false);
   const [jobDetails, setJobDetails]   = useState<JobDetails | null>(null);
-  const speedDoneRef = useRef(false);
 
-  const roleName = ROLE_NAMES[params.role] ?? params.role;
+  // Big No screening state (null = not started yet)
+  const [bigNoStage, setBigNoStage]   = useState<BigNoStage | "pass" | null>(null);
+  const [bigNoFlagging, setBigNoFlagging] = useState(false);
+
+  const speedDoneRef = useRef(false);
 
   // Fetch job details if job param provided
   useEffect(() => {
@@ -66,8 +180,10 @@ function ApplyInner() {
       .catch(() => {});
   }, [jobId]);
 
+  // Internet speed test (step 2 = old step 2, now step 3 counting from bigNo)
   useEffect(() => {
-    if (step !== 2 || speedDoneRef.current) return;
+    // We're on step 2 of the main form (the "Your Setup" step)
+    if (step !== 2 || bigNoStage !== "pass" || speedDoneRef.current) return;
     speedDoneRef.current = true;
     setSpeedTesting(true);
     const start = Date.now();
@@ -87,7 +203,7 @@ function ApplyInner() {
       })
       .catch(() => {})
       .finally(() => setSpeedTesting(false));
-  }, [step, applicantId]);
+  }, [step, applicantId, bigNoStage]);
 
   function update(field: keyof Form, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -136,6 +252,13 @@ function ApplyInner() {
     }
     const ok = await saveStep();
     if (!ok) return;
+
+    if (step === 1) {
+      // After step 1 → start Big No screening
+      setBigNoStage("q1");
+      return;
+    }
+
     if (step < 3) {
       setStep(step + 1);
     } else {
@@ -148,17 +271,94 @@ function ApplyInner() {
     }
   }
 
+  // Handle a Big No answer
+  async function handleBigNoAnswer(stage: BigNoStage, value: string, disqualifies: boolean) {
+    if (disqualifies) {
+      // Flag the applicant silently in the background then redirect
+      setBigNoFlagging(true);
+      if (applicantId) {
+        await fetch(`/api/applicants/${applicantId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            disqualified: true,
+            disqualification_reason: `${stage}:${value}`,
+          }),
+        }).catch(() => {});
+      }
+      router.push(`/${params.role}/screened`);
+      return;
+    }
+
+    const next = nextStage(stage, value);
+    if (next === "pass") {
+      setBigNoStage("pass");
+      setStep(2); // advance to step 2 of main form
+    } else {
+      setBigNoStage(next);
+    }
+  }
+
   function handleBack() { setError(""); setStep(step - 1); }
 
   const STEPS = ["Basic Info", "Your Setup", "Work Experience"];
+  const displayRole = jobDetails?.apply_roles.name ?? ROLE_NAMES[params.role] ?? params.role;
 
-  const displayTitle = jobDetails?.title ?? roleName;
-  const displayRole  = jobDetails?.apply_roles.name ?? roleName;
+  // ── Render Big No screening ──────────────────────────────────────────────
+  if (bigNoStage !== null && bigNoStage !== "pass") {
+    if (bigNoFlagging) {
+      return (
+        <div className="max-w-xl mx-auto px-4 py-24 text-center">
+          <div className="w-8 h-8 border-2 border-brand-orange border-t-transparent rounded-full animate-spin mx-auto" />
+        </div>
+      );
+    }
 
+    const q = BIG_NO_QUESTIONS.find((x) => x.stage === bigNoStage);
+    if (!q) return null;
+
+    return (
+      <div className="max-w-xl mx-auto px-4 py-12">
+        <div className="text-center mb-10">
+          <p className="section-label mb-2">Quick check</p>
+          <p className="text-brand-text-muted text-sm">
+            Just a few questions before we continue
+          </p>
+        </div>
+
+        <div className="card p-8">
+          <h2 className="text-white font-semibold text-lg mb-2 leading-snug">
+            {q.question}
+          </h2>
+          {q.subtext && (
+            <p className="text-brand-text-muted text-sm mb-6">{q.subtext}</p>
+          )}
+          {!q.subtext && <div className="mb-6" />}
+
+          <div className="grid gap-3">
+            {q.options.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => handleBigNoAnswer(q.stage, opt.value, !!opt.disqualifies)}
+                className="w-full text-left card px-5 py-4 text-brand-text-body text-sm font-medium
+                           hover:border-brand-orange hover:bg-brand-black-card hover:text-white
+                           transition-all duration-150"
+              >
+                <span className="text-brand-orange font-bold mr-3">→</span>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Render main form ──────────────────────────────────────────────────────
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
 
-      {/* Job banner — shown when applying to a specific posting */}
+      {/* Job banner */}
       {jobDetails && (
         <div className="card-inner p-4 mb-6 border-brand-orange/30">
           <p className="text-xs text-brand-orange font-semibold uppercase tracking-wider mb-1">You're applying for</p>

@@ -13,6 +13,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (typeof body.email === "string" && body.email.trim()) {
     updates.email = body.email.trim().toLowerCase();
   }
+  // Disqualification flag (Big No screening)
+  if (body.disqualified === true) {
+    updates.disqualified_at = new Date().toISOString();
+    if (typeof body.disqualification_reason === "string") {
+      updates.disqualification_reason = body.disqualification_reason;
+    }
+  }
 
   const db = createServiceClient();
   const { data, error } = await db

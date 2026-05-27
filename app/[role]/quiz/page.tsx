@@ -189,9 +189,6 @@ function QuizInner() {
 
   function blockAction(e: React.SyntheticEvent) { e.preventDefault(); }
 
-  const timerPct   = (timeLeft / TIMER_SECONDS) * 100;
-  const timerColor = timeLeft <= 10 ? "bg-red-500" : "bg-brand-orange";
-
   if (state === "loading") return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
       <div className="w-8 h-8 border-2 border-brand-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -271,11 +268,30 @@ function QuizInner() {
     <div className="max-w-2xl mx-auto px-4 py-8 select-none" onContextMenu={blockAction} onCopy={blockAction} onCut={blockAction} onPaste={blockAction}>
       <div className="flex items-center justify-between mb-4">
         <span className="text-brand-text-muted text-sm">Question {current + 1} of {questions.length}</span>
-        <span className={`text-sm font-bold tabular-nums ${timeLeft <= 10 ? "text-red-400" : "text-brand-orange"}`}>{timeLeft}s</span>
       </div>
 
-      <div className="h-1 w-full bg-brand-black-border rounded-full mb-8 overflow-hidden">
-        <div className={`h-1 rounded-full transition-all duration-1000 ${timerColor}`} style={{ width: `${timerPct}%` }} />
+      {/* Circular timer */}
+      <div className="flex items-center justify-center mb-6">
+        <div className="relative w-16 h-16">
+          <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="28" fill="none" stroke="#1e1e1e" strokeWidth="4" />
+            <circle
+              cx="32" cy="32" r="28"
+              fill="none"
+              stroke={timeLeft <= 10 ? "#ef4444" : "#f97316"}
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeDasharray={`${2 * Math.PI * 28}`}
+              strokeDashoffset={`${2 * Math.PI * 28 * (1 - timeLeft / TIMER_SECONDS)}`}
+              style={{ transition: "stroke-dashoffset 1s linear, stroke 0.3s" }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className={`text-lg font-bold tabular-nums ${timeLeft <= 10 ? "text-red-400" : "text-brand-orange"}`}>
+              {timeLeft}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="card p-6 mb-6">

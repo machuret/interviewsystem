@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { AnalyticsQuestion } from "../_types";
 import { ROLES } from "@/lib/roles";
 import Spinner from "./Spinner";
+import { SkeletonCard } from "@/components/Skeleton";
 
 type DailyPoint = { date: string; count: number };
 type ScoreBin   = { score: number; count: number };
@@ -43,7 +44,15 @@ function OverviewPanel() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <Spinner />;
+  if (loading) return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[0,1,2,3].map(i => <SkeletonCard key={i} lines={2} />)}
+      </div>
+      <SkeletonCard lines={4} />
+      <SkeletonCard lines={6} />
+    </div>
+  );
   if (!metrics) return <p className="text-brand-text-muted text-sm">No data yet.</p>;
 
   const maxDaily = Math.max(...daily.map((d) => d.count), 1);

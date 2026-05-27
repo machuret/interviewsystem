@@ -2,6 +2,8 @@
 
 import { useParams, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
+import ProgressSteps from "@/components/ProgressSteps";
+import { PartyIcon, CheckCircleIcon } from "@/components/icons";
 
 function PassForm() {
   const params       = useParams<{ role: string }>();
@@ -94,7 +96,9 @@ function PassForm() {
   if (done) {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 text-center">
-        <div className="text-5xl mb-6">🎉</div>
+        <div className="mb-6 flex justify-center">
+          <PartyIcon size={48} className="text-brand-orange" />
+        </div>
         <h1 className="text-fluid-heading font-bold text-white mb-4">Application received!</h1>
         <p className="text-brand-text-secondary text-fluid-lead mb-6 leading-relaxed">
           We've got your details and we'll be in touch within 3–5 business days if you're a strong fit.
@@ -111,9 +115,11 @@ function PassForm() {
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
+      <ProgressSteps steps={["Apply", "Quick Check", "Typing Test", "Quiz", "Profile"]} current={4} />
+
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 card-inner rounded-full px-4 py-2 text-sm mb-4">
-          <span className="text-brand-orange">✓</span>
+          <CheckCircleIcon size={14} className="text-brand-orange" />
           <span className="text-white font-medium">You passed!</span>
         </div>
         <h1 className="text-fluid-heading font-bold text-white mb-2">Almost there</h1>

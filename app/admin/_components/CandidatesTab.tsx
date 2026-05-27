@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { Candidate, Note, NotesCache } from "../_types";
 import { STATUSES } from "../_types";
 import { ROLES } from "@/lib/roles";
-import Spinner from "./Spinner";
+import SkeletonList from "@/components/Skeleton";
 import ListView from "./ListView";
 import KanbanView from "./KanbanView";
 import BulkActionBar from "./BulkActionBar";
@@ -357,7 +357,7 @@ export default function CandidatesTab() {
       </div>
 
       {loading ? (
-        <Spinner />
+        <SkeletonList count={8} />
       ) : viewMode === "list" ? (
         <>
           <ListView

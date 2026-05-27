@@ -101,7 +101,9 @@ export default function AdminPage() {
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 capitalize ${
-              tab === t ? "bg-brand-orange text-white" : "text-brand-text-tertiary hover:text-white"
+              tab === t
+                ? "bg-brand-orange text-white"
+                : "text-[#666680] hover:text-white hover:bg-[#1e1e1e]"
             }`}
           >
             {t}

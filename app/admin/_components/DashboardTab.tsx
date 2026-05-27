@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import type { DashboardStats } from "../_types";
 import { STATUSES, STATUS_HEADER_COLORS } from "../_types";
-import Spinner from "./Spinner";
+import { SkeletonCard } from "@/components/Skeleton";
 
 export default function DashboardTab() {
   const [data, setData]       = useState<DashboardStats | null>(null);
@@ -18,7 +18,11 @@ export default function DashboardTab() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <Spinner />;
+  if (loading) return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      {[0,1,2,3].map(i => <SkeletonCard key={i} lines={2} />)}
+    </div>
+  );
   if (error || !data) return <p className="text-red-400">{error || "Failed to load."}</p>;
 
   const { funnel, roles, status_counts } = data;

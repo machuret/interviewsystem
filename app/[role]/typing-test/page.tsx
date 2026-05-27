@@ -99,8 +99,6 @@ function TypingTestInner() {
     });
   }
 
-  const timerPct = (timeLeft / DURATION) * 100;
-
   if (phase === "intro") {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
@@ -154,14 +152,26 @@ function TypingTestInner() {
     <div className="max-w-2xl mx-auto px-4 py-8 select-none" onContextMenu={(e) => e.preventDefault()} onCopy={(e) => e.preventDefault()} onPaste={(e) => e.preventDefault()}>
       <div className="flex items-center justify-between mb-4">
         <span className="text-brand-text-secondary text-sm">Type the passage below</span>
-        <span className={`text-lg font-bold tabular-nums ${timeLeft <= 10 ? "text-red-400" : "text-brand-orange"}`}>{timeLeft}s</span>
       </div>
 
-      <div className="h-1 w-full bg-brand-black-border rounded-full mb-6 overflow-hidden">
-        <div
-          className={`h-1 rounded-full transition-all duration-1000 ${timeLeft <= 10 ? "bg-red-500" : "bg-brand-orange"}`}
-          style={{ width: `${timerPct}%` }}
-        />
+      <div className="flex items-center justify-center mb-4">
+        <div className="relative w-14 h-14">
+          <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
+            <circle cx="28" cy="28" r="24" fill="none" stroke="#1e1e1e" strokeWidth="3.5"/>
+            <circle cx="28" cy="28" r="24" fill="none"
+              stroke={timeLeft <= 10 ? "#ef4444" : "#f97316"}
+              strokeWidth="3.5" strokeLinecap="round"
+              strokeDasharray={`${2 * Math.PI * 24}`}
+              strokeDashoffset={`${2 * Math.PI * 24 * (1 - timeLeft / DURATION)}`}
+              style={{ transition: "stroke-dashoffset 1s linear, stroke 0.3s" }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className={`text-base font-bold tabular-nums ${timeLeft <= 10 ? "text-red-400" : "text-brand-orange"}`}>
+              {timeLeft}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="card p-5 mb-4 font-mono text-sm leading-relaxed">
